@@ -72,6 +72,7 @@ class FNB(Scraper):
             button = footer.find_element_by_tag_name('a')
             print("Pop Up visible, Pressing button")
             button.click()
+            self.wait_for_loader()
         except NoSuchElementException:
             print("No popup")
 
@@ -93,17 +94,17 @@ class FNB(Scraper):
         self.driver = None
         return True
 
-    def open_account(self, name):
+    def load_account_page(self):
         # Make sure we're on the 'My Bank Accounts' tab
-        my_accounts = self.driver.find_element_by_xpath("// *[ @ id = 'topTabs'] / span[2] / span")
-        # check my_accounts.text = 'My Bank\nAccounts' before clicking
-        my_accounts.click()
+        header = self.driver.find_element_by_xpath('//*[@id="topTabs"]')
+        tabs = header.find_elements_by_xpath('//*[contains(@class,"mainTab")]')
+        if not (self.click_tab(tabs, 'accounts')):
+            return False
+        return True
 
-        try:
-            print("Waiting for accounts")
-            WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, "//*[@id='accountsTable']")))
-        except TimeoutException:
+    def open_account(self, name):
+        # Go to accounts page
+        if not self.load_account_page():
             return False
 
         accounts_table = self.driver.find_element_by_id("accountsTable_tableContent")
