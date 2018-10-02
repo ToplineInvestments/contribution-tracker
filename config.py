@@ -1,4 +1,5 @@
 # Topline contribution tracker config file
+# WARNING: DO NOT COMMIT THIS FILE AFTER UPDATING YOUR LOGIN DETAILS
 
 # URL for FNB login page
 fnb_url = "https://www.fnb.co.za/"
@@ -13,5 +14,5 @@ fnb_password = 'password'
 # If using 'firefoxdriver' ensure driver is installed.
 driver = 'chrome'
 
-# Path to chromedriver executable. Uncomment and enter absolute path if using chromedriver
+# Path to chromedriver executable. Enter absolute path if using chromedriver
 path_to_driver = 'C:/path/to/chromedriver/chromedriver.exe'
