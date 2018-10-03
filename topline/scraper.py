@@ -6,6 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
+import time
 
 
 class Scraper:
@@ -66,8 +67,7 @@ class FNB(Scraper):
         pass_field.send_keys(password)
 
         self.driver.find_element_by_xpath("//input[@id='OBSubmit']").click()
-        
-        # Add check for failed login
+        time.sleep(1)
         
         try:
             footer = self.driver.find_element_by_xpath("//div[@id='footerButtonGroup']")
@@ -76,6 +76,11 @@ class FNB(Scraper):
             button.click()
             self.wait_for_loader()
         except NoSuchElementException:
+            overlay = self.driver.find_element_by_xpath('//*[@id="zaSkin"]/body/div[40]')
+            if overlay.is_displayed():
+                print('Login failed! Check credentials')
+                self.driver.quit()
+                raise SystemExit(0)
             print("No popup")
 
         try:
