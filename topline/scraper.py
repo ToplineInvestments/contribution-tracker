@@ -79,14 +79,11 @@ class FNB(Scraper):
             print("No popup")
 
         try:
-            print("Waiting for load")
             WebDriverWait(self.driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "// *[ @ id = 'newsLanding'] / div[1]")))
         except TimeoutException:
             print("Timeout")
             return False
-
-        print("Ready for account")
         return True
 
     def logout(self):
@@ -135,6 +132,8 @@ class FNB(Scraper):
                 if transactions:
                     self.accounts[account]['transactions'] = transactions
                     print("Found {} transactions".format(len(self.accounts[account]['transactions'])))
+                elif len(transactions) == 0:
+                    print("No transactions found for account")
                 else:
                     print("Unable to get transactions!")
                 # Go back to accounts page before going to next account
@@ -143,7 +142,6 @@ class FNB(Scraper):
         return True
 
     def get_transactions(self):
-        print("Get transactions")
         # Make sure we're on the Transaction History Tab
         header = self.driver.find_element_by_xpath('//*[@id="subTabsScrollable"]')
         tabs = header.find_elements_by_xpath('//*[contains(@class,"subTabText")]')
