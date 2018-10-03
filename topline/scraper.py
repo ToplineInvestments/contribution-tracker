@@ -66,7 +66,9 @@ class FNB(Scraper):
         pass_field.send_keys(password)
 
         self.driver.find_element_by_xpath("//input[@id='OBSubmit']").click()
-
+        
+        # Add check for failed login
+        
         try:
             footer = self.driver.find_element_by_xpath("//div[@id='footerButtonGroup']")
             button = footer.find_element_by_tag_name('a')
@@ -102,17 +104,42 @@ class FNB(Scraper):
             return False
         return True
 
-    def open_account(self, name):
+    def get_accounts(self, get_transactions=True):
         # Go to accounts page
         if not self.load_account_page():
             return False
 
         accounts_table = self.driver.find_element_by_id("accountsTable_tableContent")
         accounts = accounts_table.find_elements_by_xpath('//*[contains(@id,"nickname")]')
-        if not (self.click_tab(accounts, name)):
-            print("Multiple accounts found containing: " + name)
-            return False
-        print("Account opened")
+        account_numbers = accounts_table.find_elements_by_xpath('//*[contains(@id,"accountNumber")]')
+        
+        for i in range(len(accounts)):
+            acc_num = account_numbers[i].text
+            self.accounts[accounts[i].get_attribute('id')] = {'name': accounts[i].text, 'acc_num': acc_num}
+        print("Found {} accounts".format(len(self.accounts)))
+        
+        if get_transactions:
+            for account in self.accounts:
+                print("Getting transactions for account: {}".format(self.accounts[account]['name']))
+                # Open account
+                # Can't click account if link is off page so scroll to bottom and click again if it fails
+                try:
+                    self.driver.find_element_by_id(account).click()
+                except WebDriverException:
+                    self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                    # Another try catch?
+                    self.driver.find_element_by_id(account).click()
+
+                self.wait_for_loader()
+                transactions = self.get_transactions()
+                if transactions:
+                    self.accounts[account]['transactions'] = transactions
+                    print("Found {} transactions".format(len(self.accounts[account]['transactions'])))
+                else:
+                    print("Unable to get transactions!")
+                # Go back to accounts page before going to next account
+                if not self.load_account_page():
+                    return False
         return True
 
     def get_transactions(self):
@@ -135,6 +162,11 @@ class FNB(Scraper):
         fees = [f.text for f in transaction_table.find_elements_by_xpath('//*[@id="serviceFee"]')]
         amounts = [amt.text for amt in transaction_table.find_elements_by_xpath('//*[contains(@id,"amount")]')]
         balances = [bal.text for bal in transaction_table.find_elements_by_xpath('//*[@id="ledgerBalance"]')]
+        
+        if len(references) == 0:
+            references = [''] * len(dates)
+        if len(fees) == 0:
+            fees = [''] * len(dates)
 
         transactions = list(zip(dates, descriptions, references, fees, amounts, balances))
         return transactions
