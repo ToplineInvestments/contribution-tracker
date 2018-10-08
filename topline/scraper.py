@@ -68,7 +68,16 @@ class FNB(Scraper):
 
         self.driver.find_element_by_xpath("//input[@id='OBSubmit']").click()
         time.sleep(1)
-        
+
+        try:
+            overlay = self.driver.find_element_by_xpath('//*[@id="zaSkin"]/body/div[40]')
+            if overlay.is_displayed():
+                print('Login failed! Check credentials')
+                self.driver.quit()
+                raise SystemExit(0)
+        except NoSuchElementException:
+            print("Login successful")
+
         try:
             footer = self.driver.find_element_by_xpath("//div[@id='footerButtonGroup']")
             button = footer.find_element_by_tag_name('a')
@@ -76,11 +85,6 @@ class FNB(Scraper):
             button.click()
             self.wait_for_loader()
         except NoSuchElementException:
-            overlay = self.driver.find_element_by_xpath('//*[@id="zaSkin"]/body/div[40]')
-            if overlay.is_displayed():
-                print('Login failed! Check credentials')
-                self.driver.quit()
-                raise SystemExit(0)
             print("No popup")
 
         try:
