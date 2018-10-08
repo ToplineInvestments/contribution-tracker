@@ -1,0 +1,19 @@
+; Topline contribution tracker config file
+; Copy or Rename this file to config.ini and update values
+
+[SCRAPER]
+; URL for FNB login page
+URL = https://www.fnb.co.za/
+
+; Username and Password for FNB account. For security use only a read-only account.
+; Update two lines below with username and password.
+USERNAME = username
+PASSWORD = password
+
+; Driver to use. Either 'chrome' or 'firefox'.
+; If using 'chromedriver' ensure path_to_driver below is correct.
+; If using 'firefoxdriver' ensure driver is installed.
+DRIVER = chrome
+
+; Path to chromedriver executable. Enter absolute path if using chromedriver
+DRIVER_PATH = C:/path/to/chromedriver/chromedriver.exe
