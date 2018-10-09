@@ -17,3 +17,7 @@ DRIVER = chrome
 
 ; Path to chromedriver executable. Enter absolute path if using chromedriver
 DRIVER_PATH = C:/path/to/chromedriver/chromedriver.exe
+
+[DB]
+;name of database file
+FILENAME = filename.db
