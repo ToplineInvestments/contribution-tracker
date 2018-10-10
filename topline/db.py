@@ -32,6 +32,7 @@ class DB:
             self.connection.cursor().execute(
                 "INSERT INTO users (name, surname, email, username, alt_username) VALUES (?,?,?,?,?)",
                 (value['firstName'], value['lastName'], value['email'], key, key2))
+        self.connection.commit()
 
     @staticmethod
     def get_users_from_json(json_filename):
