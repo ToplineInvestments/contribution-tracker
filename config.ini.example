@@ -21,3 +21,7 @@ DRIVER_PATH = C:/path/to/chromedriver/chromedriver.exe
 [DB]
 ;name of database file
 FILENAME = filename.db
+
+[EXCEL]
+;name of excel file
+FILENAME = filename.xlsx
