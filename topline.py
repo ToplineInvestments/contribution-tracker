@@ -1,9 +1,16 @@
 from topline.scraper import FNB
+from topline.excel import Excel
+from topline.db import DB
 import configparser
 
 config = configparser.ConfigParser()
 if not config.read('config.ini'):
     print('No config.ini file found')
+    raise SystemExit(0)
+
+DB = DB(config['DB']['FILENAME'])
+if not DB.connection:
+    print('DB error')
     raise SystemExit(0)
 
 path_to_driver = None
@@ -28,3 +35,10 @@ if FNB.driver:
         FNB.logout()
     else:
         FNB.driver.quit()
+
+excel = Excel(config['EXCEL']['FILENAME'])
+if excel.workbook:
+    excel.get_sheets()
+    for account in FNB.accounts:
+        excel.update_excel(FNB.accounts[account]['transactions'])
+    excel.close_workbook()
