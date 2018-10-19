@@ -51,6 +51,72 @@ class Excel:
         except FileNotFoundError:
             print("File not found: {}".format(Path(filename).absolute()))
 
+    def add_transaction(self, account_name, transaction):
+        # if transaction is not from cheque account, it can't be a contribution
+        # if it is from cheque account, try to process as contribution, otherwise try income/expense
+        success = False
+        if 'cheque' in account_name.lower():
+            success = self.process_contribution(transaction)
+        if not success:
+            success = self.process_income_expense(transaction)
+
+        if not success:
+            print('Unable to process transaction {}'.format(transaction))
+            return False
+        return True
+
+    def process_contribution(self, transaction):
+        # Find transaction reference. Check reference column first then description column
+        ref = format_string(transaction[2]) or format_string(transaction[1])
+        if len(ref) < 3:
+            print("Reference Error - Too few parameters: {}".format(ref))
+            return False
+
+        date = format_string(transaction[0])
+        amount = float(transaction[4].replace(",", ""))
+
+        # determine user
+        user_ids = [ui for ui, u in enumerate(self.users) for ri, r in enumerate(ref) if r in u]
+        if len(user_ids) is not 1:
+            print("Error finding user in reference: {}".format(ref))
+            return False
+        user_id = user_ids[0]
+
+        # find month in transaction reference
+        month_ids = [mi for mi, m in enumerate(months) for ri, r in enumerate(ref) if r in m]
+        if not month_ids:
+            month_ids = [mi for mi, m in enumerate(months) if date[1] in m]
+            if len(month_ids) is not 1:
+                print("Error finding month in reference: {}".format(ref))
+                return False
+        month_id = month_ids[0]
+
+        years = [r for i, r in enumerate(ref) if is_number(r)]
+        year_id = (years[0] if len(years) == 1 else date[2]) % 2000
+
+        # determine which sheet to use for current transaction
+        sheet = self.get_target_sheet(month_id, year_id)
+        if not sheet:
+            print("Error finding correct sheet for transaction. ref: {}".format(ref))
+            return False
+        header = self.get_column_headers(sheet)
+
+        # find correct column for contribution month
+        try:
+            column = header.index([month_id, year_id]) + 1
+        except ValueError:
+            print("Error finding correct column for month {}, year {}".format(month_id, year_id))
+            return False
+
+        # find correct row for user
+        user_row = 33
+        row = user_row + user_id
+
+        return self.write_to_sheet(sheet, row, column, amount)
+
+    def process_income_expense(self, transaction):
+        return False
+
     def get_sheets(self):
         self.sheet_names = self.workbook.get_sheet_names()
         for sheet in self.sheet_names:
@@ -69,91 +135,30 @@ class Excel:
         header = [[h.value.month - 1, h.value.year % 2000] if h.is_date else str(h.value) for h in header]
         return header
 
-    def add_transaction(self, account_name, transaction):
-        # if transaction is not from cheque account, it can't be a contribution
-        # if it is from cheque account, try to process as contribution, otherwise try income/expense
-        success = False
-        if 'cheque' in account_name.lower():
-            success = self.process_contribution(transaction)
-        if not success:
-            success = self.process_income_expense(transaction)
-
-        if not success:
-            print('Unable to process transaction {}'.format(transaction))
-            return False
-        return True
-
-    def process_contribution(self, transaction):
-        # Find transaction reference. Check reference column first then description column
-        ref = format_string(transaction[2])
-        if not ref:
-            ref = format_string(transaction[1])
-        date = format_string(transaction[0])
-
-        if len(ref) < 3:
-            print("Reference Error - Too few parameters: {}".format(ref))
-            return False
-
-        # determine user
-        user_id = [ui for ui, u in enumerate(self.users) for ri, r in enumerate(ref) if r in u]
-        if len(user_id) is not 1:
-            print("Error finding user in reference: {}".format(ref))
-            return False
-        user_id = user_id[0]
-
-        # find month in transaction reference
-        month_id = [mi for mi, m in enumerate(months) for ri, r in enumerate(ref) if r in m]
-        if not month_id:
-            month_id = [mi for mi, m in enumerate(months) if date[1] in m]
-            if len(month_id) is not 1:
-                print("Error finding month in reference: {}".format(ref))
-                return False
-
-        year = [r for i, r in enumerate(ref) if is_number(r)]
-        if len(year) == 1:
-            year_id = year[0] % 2000
-        else:
-            year_id = date[2] % 2000
-
+    def get_target_sheet(self, month, year):
         # determine which sheet to use for current transaction
         sheet_id = [i for i, s in enumerate(self.sheet_list) if
-                    (month_id[0] >= s[0] and year_id == s[1]) or (month_id[0] <= s[2] and year_id == s[3])]
+                    (month >= s[0] and year == s[1]) or (month <= s[2] and year == s[3])]
         if not sheet_id:
-            print("Error finding correct sheet for transaction. ref: {}".format(ref))
-            return False
-        sheet_id = sheet_id[0]
+            return None
+        return self.workbook[self.sheet_names[sheet_id[0]]]
 
-        # Use required sheet
-        sheet = self.workbook[self.sheet_names[sheet_id]]
-        header = self.get_column_headers(sheet)
-
-        # find correct column for contribution month
-        try:
-            column = header.index([month_id[0], year_id]) + 1
-        except ValueError:
-            print("Error finding correct column for month {}, year {}".format(month_id[0], year_id))
-            return False
-
-        # find correct row for user
-        user_row = 33
-        row = user_row + user_id
-
-        target_cell = sheet.cell(row=row, column=column)
-
+    def write_to_sheet(self, sheet, row, col, value, overwrite=False):
+        target_cell = sheet.cell(row=row, column=col)
         if target_cell.protection.locked:
-            print("Cell {}{} is locked!".format(openpyxl.utils.get_column_letter(column), row))
+            print("Cell {}{} is locked!".format(openpyxl.utils.get_column_letter(col), row))
             return False
 
         cell_val = target_cell.value
-        if cell_val == 0 or cell_val == '-' or cell_val is None:
-            sheet.cell(row=row, column=column, value=float(transaction[4].replace(",", "")))
+        if cell_val == 0 or cell_val == '-' or cell_val is None or overwrite:
+            sheet.cell(row=row, column=col, value=value)
+        elif cell_val == value:
+            print("Transaction already processed!")
+            return False
         else:
-            print("Cell {}{} contains data!".format(openpyxl.utils.get_column_letter(column), row))
+            print("Cell {}{} contains data!".format(openpyxl.utils.get_column_letter(col), row))
             return False
         return True
-
-    def process_income_expense(self, transaction):
-        return False
 
     def close_workbook(self, overwrite=True, filename=None):
         new_filename = self.filename
