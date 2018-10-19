@@ -51,14 +51,16 @@ class Excel:
         except FileNotFoundError:
             print("File not found: {}".format(Path(filename).absolute()))
 
-    def add_transaction(self, account_name, transaction):
-        # if transaction is not from cheque account, it can't be a contribution
-        # if it is from cheque account, try to process as contribution, otherwise try income/expense
+    def add_transaction(self, account_name, account_number, transaction):
+        # All income, including contributions, and expenses should be from the cheque account
+        # All other accounts are savings and fixed deposit accounts so should only have profit share returns
         success = False
         if 'cheque' in account_name.lower():
             success = self.process_contribution(transaction)
-        if not success:
-            success = self.process_income_expense(transaction)
+            if not success:
+                success = self.process_income_expense(transaction)
+        elif 'savings' in account_name.lower() or 'deposit' in account_name.lower():
+            success = self.process_roi(account_number, transaction)
 
         if not success:
             print('Unable to process transaction {}'.format(transaction))
@@ -115,6 +117,9 @@ class Excel:
         return self.write_to_sheet(sheet, row, column, amount)
 
     def process_income_expense(self, transaction):
+        return False
+
+    def process_roi(self, account_number, transaction):
         return False
 
     def get_sheets(self):
