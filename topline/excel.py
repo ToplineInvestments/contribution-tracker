@@ -17,6 +17,10 @@ months = [['JANUARY', 'JAN'],
           ['NOVEMBER', 'NOV'],
           ['DECEMBER', 'DEC']]
 header_row = 32
+user_row = 33
+roi_row = 71
+income_row = 75
+expense_row = 77
 
 
 def is_number(s):
@@ -48,6 +52,7 @@ class Excel:
         self.users = DB().get_user_ids()
         try:
             self.workbook = openpyxl.load_workbook(filename)
+            self.get_sheets()
         except FileNotFoundError:
             print("File not found: {}".format(Path(filename).absolute()))
 
@@ -111,13 +116,44 @@ class Excel:
             return False
 
         # find correct row for user
-        user_row = 33
         row = user_row + user_id
 
         return self.write_to_sheet(sheet, row, column, amount)
 
     def process_income_expense(self, transaction):
-        return False
+        # Find transaction reference. Check reference column first then description column
+        ref = transaction[2] if format_string(transaction[2]) else transaction[1]
+        date = format_string(transaction[0])
+        amount = float(transaction[4].replace(",", ""))
+
+        if ref == '#MONTHLY ACCOUNT FEE':
+            row = expense_row
+        else:
+            print('Unknown income or expense!')
+            return False
+
+        month_ids = [mi for mi, m in enumerate(months) if date[1] in m]
+        if len(month_ids) is not 1:
+            print("Error finding month in date: {}".format(date))
+            return False
+        month_id = month_ids[0]
+
+        year_id = date[2] % 2000
+
+        # determine which sheet to use for current transaction
+        sheet = self.get_target_sheet(month_id, year_id)
+        if not sheet:
+            print("Error finding correct sheet for transaction. ref: {}".format(ref))
+            return False
+        header = self.get_column_headers(sheet)
+
+        # find correct column for contribution month
+        try:
+            column = header.index([month_id, year_id]) + 1
+        except ValueError:
+            print("Error finding correct column for month {}, year {}".format(month_id, year_id))
+            return False
+        return self.write_to_sheet(sheet, row, column, amount)
 
     def process_roi(self, account_number, transaction):
         return False
@@ -130,8 +166,8 @@ class Excel:
             else:
                 # format sheet name
                 s = format_string(sheet)
-                s = [i if type(i) is int else (next((j for j, x in enumerate(months) if i in x), None)) for i in s]
-                self.sheet_list.append(s)
+                name = [i if type(i) is int else (next((j for j, x in enumerate(months) if i in x), None)) for i in s]
+                self.sheet_list.append(name)
         self.sheet_names.remove(self.summary_sheet.title)
 
     def get_column_headers(self, sheet):
