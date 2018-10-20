@@ -156,7 +156,48 @@ class Excel:
         return self.write_to_sheet(sheet, row, column, amount)
 
     def process_roi(self, account_number, transaction):
-        return False
+        # Find transaction reference.
+        ref = transaction[1]
+        date = format_string(transaction[0])
+        amount = float(transaction[4].replace(",", ""))
+
+        if 'profit share' in ref.lower():
+            month_ids = [mi for mi, m in enumerate(months) if date[1] in m]
+            if len(month_ids) is not 1:
+                print("Error finding month in date: {}".format(date))
+                return False
+            month_id = month_ids[0]
+
+            year_id = date[2] % 2000
+
+            # determine which sheet to use for current transaction
+            sheet = self.get_target_sheet(month_id, year_id)
+            if not sheet:
+                print("Error finding correct sheet for transaction. ref: {}".format(ref))
+                return False
+            header = self.get_column_headers(sheet)
+
+            # find correct column for contribution month
+            try:
+                column = header.index([month_id, year_id]) + 1
+            except ValueError:
+                print("Error finding correct column for month {}, year {}".format(month_id, year_id))
+                return False
+
+            roi_range = sheet['A'+str(roi_row):'A'+str(income_row-1)]
+            row = 0
+            for r in roi_range:
+                if account_number in r[0].value:
+                    row = r[0].row
+                    break
+            if not row:
+                print('Unable to find row for ROI transaction from account: {}'.format(account_number))
+                return False
+
+            return self.write_to_sheet(sheet, row, column, amount)
+        else:
+            print("Not an ROI transaction!")
+            return False
 
     def get_sheets(self):
         self.sheet_names = self.workbook.get_sheet_names()
