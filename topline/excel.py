@@ -153,7 +153,7 @@ class Excel:
         except ValueError:
             print("Error finding correct column for month {}, year {}".format(month_id, year_id))
             return False
-        return self.write_to_sheet(sheet, row, column, amount)
+        return self.write_to_sheet(sheet, row, column, abs(amount))
 
     def process_roi(self, account_number, transaction):
         # Find transaction reference.
