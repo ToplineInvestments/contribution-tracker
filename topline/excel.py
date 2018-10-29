@@ -236,7 +236,7 @@ class Excel:
             return False
 
     def get_sheets(self):
-        self.sheet_names = self.workbook.get_sheet_names()
+        self.sheet_names = self.workbook.sheetnames
         for sheet in self.sheet_names:
             if 'summary' in sheet.lower():
                 self.summary_sheet = self.workbook[sheet]
