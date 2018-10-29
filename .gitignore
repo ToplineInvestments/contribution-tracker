@@ -3,3 +3,5 @@
 *.json*
 *.db
 *.xlsx
+*.log*
+*.txt
