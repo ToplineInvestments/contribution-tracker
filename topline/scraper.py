@@ -7,6 +7,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Scraper:
@@ -19,7 +22,7 @@ class Scraper:
         elif driver == 'chrome':
             self.driver = self.init_chrome_driver(headless, driver_path)
         else:
-            print("Invalid or unsupported driver. Drivers supported: Chrome, Firefox")
+            logger.error("Invalid or unsupported driver. Drivers supported: Chrome, Firefox")
 
     @staticmethod
     def init_firefox_driver(headless):
@@ -29,7 +32,7 @@ class Scraper:
         try:
             driver = webdriver.Firefox(firefox_options=options)
         except WebDriverException:
-            print("No Firefox driver found")
+            logger.error("No Firefox driver found")
             return False
         return driver
 
@@ -39,12 +42,12 @@ class Scraper:
         if headless:
             options.add_argument('--headless')
         if not path:
-            print("Need path to chromedriver.exe")
+            logger.error("Need path to chromedriver.exe")
             return False
         try:
             driver = webdriver.Chrome(path, chrome_options=options)
         except WebDriverException:
-            print("chromedriver not found at:", path)
+            logger.error("chromedriver not found at: %s", path)
             return False
         return driver
 
@@ -72,26 +75,26 @@ class FNB(Scraper):
         try:
             overlay = self.driver.find_element_by_xpath('//*[@id="zaSkin"]/body/div[40]')
             if overlay.is_displayed():
-                print('Login failed! Check credentials')
+                logger.error('Login failed! Check credentials')
                 self.driver.quit()
                 raise SystemExit(0)
         except NoSuchElementException:
-            print("Login successful")
+            logger.info("Login successful")
 
         try:
             footer = self.driver.find_element_by_xpath("//div[@id='footerButtonGroup']")
             button = footer.find_element_by_tag_name('a')
-            print("Pop Up visible, Pressing button")
+            logger.debug("Pop Up visible, Pressing button")
             button.click()
             self.wait_for_loader()
         except NoSuchElementException:
-            print("No popup")
+            logger.debug("No popup")
 
         try:
             WebDriverWait(self.driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "// *[ @ id = 'newsLanding'] / div[1]")))
         except TimeoutException:
-            print("Timeout")
+            logger.debug("Timeout")
             return False
         return True
 
@@ -122,11 +125,11 @@ class FNB(Scraper):
         for i in range(len(accounts)):
             acc_num = account_numbers[i].text
             self.accounts[accounts[i].get_attribute('id')] = {'name': accounts[i].text, 'acc_num': acc_num}
-        print("Found {} accounts".format(len(self.accounts)))
+        logger.info("Found %d accounts", len(self.accounts))
         
         if get_transactions:
             for account in self.accounts:
-                print("Getting transactions for account: {}".format(self.accounts[account]['name']))
+                logger.info("Getting transactions for account: %s", self.accounts[account]['name'])
                 # Open account
                 # Can't click account if link is off page so scroll to bottom and click again if it fails
                 try:
@@ -140,11 +143,11 @@ class FNB(Scraper):
                 transactions = self.get_transactions()
                 if transactions:
                     self.accounts[account]['transactions'] = transactions
-                    print("Found {} transactions".format(len(self.accounts[account]['transactions'])))
+                    logger.info("Found %d transactions", len(self.accounts[account]['transactions']))
                 elif len(transactions) == 0:
-                    print("No transactions found for account")
+                    logger.info("No transactions found for account")
                 else:
-                    print("Unable to get transactions!")
+                    logger.warning("Unable to get transactions!")
                 # Go back to accounts page before going to next account
                 if not self.load_account_page():
                     return False
@@ -169,7 +172,7 @@ class FNB(Scraper):
         fees = [f.text for f in transaction_table.find_elements_by_xpath('//*[@id="serviceFee"]')]
         amounts = [amt.text for amt in transaction_table.find_elements_by_xpath('//*[contains(@id,"amount")]')]
         balances = [bal.text for bal in transaction_table.find_elements_by_xpath('//*[@id="ledgerBalance"]')]
-        
+
         if len(references) == 0:
             references = [''] * len(dates)
         if len(fees) == 0:

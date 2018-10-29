@@ -3,12 +3,15 @@ import openpyxl.utils
 import re
 from pathlib import Path
 from topline.db import DB
+import logging
 
 # imports for openpyxl merge patch
 from openpyxl.worksheet import Worksheet
 from openpyxl.reader.worksheet import WorkSheetParser
 from openpyxl.worksheet.cell_range import CellRange
 from openpyxl.worksheet.merge import MergeCells
+
+logger = logging.getLogger(__name__)
 
 months = [['JANUARY', 'JAN'],
           ['FEBRUARY', 'FEB'],
@@ -86,11 +89,12 @@ class Excel:
             self.workbook = openpyxl.load_workbook(filename)
             self.get_sheets()
         except FileNotFoundError:
-            print("File not found: {}".format(Path(filename).absolute()))
+            logger.error("File not found: %s", Path(filename).absolute())
 
     def add_transaction(self, account_name, account_number, transaction):
         # All income, including contributions, and expenses should be from the cheque account
         # All other accounts are savings and fixed deposit accounts so should only have profit share returns
+        logger.info('Processing transaction: %s', transaction)
         success = False
         if 'cheque' in account_name.lower():
             success = self.process_contribution(transaction)
@@ -100,7 +104,7 @@ class Excel:
             success = self.process_roi(account_number, transaction)
 
         if not success:
-            print('Unable to process transaction {}'.format(transaction))
+            logger.warning('Unable to process transaction')
             return False
         return True
 
@@ -108,7 +112,7 @@ class Excel:
         # Find transaction reference. Check reference column first then description column
         ref = format_string(transaction[2]) or format_string(transaction[1])
         if len(ref) < 3:
-            print("Reference Error - Too few parameters: {}".format(ref))
+            logger.debug("Reference Error - Too few parameters: %s", ref)
             return False
 
         date = format_string(transaction[0])
@@ -117,7 +121,7 @@ class Excel:
         # determine user
         user_ids = [ui for ui, u in enumerate(self.users) for ri, r in enumerate(ref) if r in u]
         if len(user_ids) is not 1:
-            print("Error finding user in reference: {}".format(ref))
+            logger.debug("Error finding user in reference: %s", ref)
             return False
         user_id = user_ids[0]
 
@@ -126,7 +130,7 @@ class Excel:
         if not month_ids:
             month_ids = [mi for mi, m in enumerate(months) if date[1] in m]
             if len(month_ids) is not 1:
-                print("Error finding month in reference: {}".format(ref))
+                logger.debug("Error finding month in reference: %s", ref)
                 return False
         month_id = month_ids[0]
 
@@ -136,7 +140,7 @@ class Excel:
         # determine which sheet to use for current transaction
         sheet = self.get_target_sheet(month_id, year_id)
         if not sheet:
-            print("Error finding correct sheet for transaction. ref: {}".format(ref))
+            logger.debug("Error finding correct sheet for transaction. ref: %s", ref)
             return False
         header = self.get_column_headers(sheet)
 
@@ -144,7 +148,7 @@ class Excel:
         try:
             column = header.index([month_id, year_id]) + 1
         except ValueError:
-            print("Error finding correct column for month {}, year {}".format(month_id, year_id))
+            logger.debug("Error finding correct column for month %s, year %s", month_id, year_id)
             return False
 
         # find correct row for user
@@ -161,12 +165,12 @@ class Excel:
         if ref == '#MONTHLY ACCOUNT FEE':
             row = expense_row
         else:
-            print('Unknown income or expense!')
+            logger.info('Unknown income or expense!')
             return False
 
         month_ids = [mi for mi, m in enumerate(months) if date[1] in m]
         if len(month_ids) is not 1:
-            print("Error finding month in date: {}".format(date))
+            logger.debug("Error finding month in date: %s", date)
             return False
         month_id = month_ids[0]
 
@@ -175,7 +179,7 @@ class Excel:
         # determine which sheet to use for current transaction
         sheet = self.get_target_sheet(month_id, year_id)
         if not sheet:
-            print("Error finding correct sheet for transaction. ref: {}".format(ref))
+            logger.debug("Error finding correct sheet for transaction. ref: %s", ref)
             return False
         header = self.get_column_headers(sheet)
 
@@ -183,7 +187,7 @@ class Excel:
         try:
             column = header.index([month_id, year_id]) + 1
         except ValueError:
-            print("Error finding correct column for month {}, year {}".format(month_id, year_id))
+            logger.debug("Error finding correct column for month %s, year %s", month_id, year_id)
             return False
         return self.write_to_sheet(sheet, row, column, abs(amount))
 
@@ -196,7 +200,7 @@ class Excel:
         if 'profit share' in ref.lower():
             month_ids = [mi for mi, m in enumerate(months) if date[1] in m]
             if len(month_ids) is not 1:
-                print("Error finding month in date: {}".format(date))
+                logger.debug("Error finding month in date: %s", date)
                 return False
             month_id = month_ids[0]
 
@@ -205,7 +209,7 @@ class Excel:
             # determine which sheet to use for current transaction
             sheet = self.get_target_sheet(month_id, year_id)
             if not sheet:
-                print("Error finding correct sheet for transaction. ref: {}".format(ref))
+                logger.debug("Error finding correct sheet for transaction. ref: %s", ref)
                 return False
             header = self.get_column_headers(sheet)
 
@@ -213,7 +217,7 @@ class Excel:
             try:
                 column = header.index([month_id, year_id]) + 1
             except ValueError:
-                print("Error finding correct column for month {}, year {}".format(month_id, year_id))
+                logger.debug("Error finding correct column for month %s, year %s", month_id, year_id)
                 return False
 
             roi_range = sheet['A'+str(roi_row):'A'+str(income_row-1)]
@@ -223,12 +227,12 @@ class Excel:
                     row = r[0].row
                     break
             if not row:
-                print('Unable to find row for ROI transaction from account: {}'.format(account_number))
+                logger.debug('Unable to find row for ROI transaction from account: %s', account_number)
                 return False
 
             return self.write_to_sheet(sheet, row, column, amount)
         else:
-            print("Not an ROI transaction!")
+            logger.debug("Not an ROI transaction!")
             return False
 
     def get_sheets(self):
@@ -260,17 +264,17 @@ class Excel:
     def write_to_sheet(self, sheet, row, col, value, overwrite=False):
         target_cell = sheet.cell(row=row, column=col)
         if target_cell.protection.locked:
-            print("Cell {}{} is locked!".format(openpyxl.utils.get_column_letter(col), row))
+            logger.warning("[%s] %s%s is locked!", sheet.title, openpyxl.utils.get_column_letter(col), row)
             return False
 
         cell_val = target_cell.value
         if cell_val == 0 or cell_val == '-' or cell_val is None or overwrite:
             sheet.cell(row=row, column=col, value=value)
         elif cell_val == value:
-            print("Transaction already processed!")
+            logger.warning("Transaction already processed!")
             return False
         else:
-            print("Cell {}{} contains data!".format(openpyxl.utils.get_column_letter(col), row))
+            logger.warning("[%s] %s%s contains data!", sheet.title, openpyxl.utils.get_column_letter(col), row)
             return False
         return True
 
@@ -280,8 +284,8 @@ class Excel:
             new_filename = filename
 
         if not overwrite and filename is None:
-            print("No filename provided. Discarding changes")
+            logger.warning("No filename provided. Discarding changes")
         else:
-            print("Saving workbook to file: {}".format(new_filename))
+            logger.info("Saving workbook to file: %s", new_filename)
             self.workbook.save(new_filename)
         self.workbook.close()
