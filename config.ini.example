@@ -25,3 +25,31 @@ FILENAME = filename.db
 [EXCEL]
 ;name of excel file
 FILENAME = filename.xlsx
+
+[loggers]
+keys=root
+
+[handlers]
+keys=rotating_file_handler,stream_handler
+
+[formatters]
+keys=formatter
+
+[logger_root]
+level=DEBUG
+handlers=rotating_file_handler,stream_handler
+
+[handler_rotating_file_handler]
+class=handlers.RotatingFileHandler
+level=DEBUG
+formatter=formatter
+args=('log.log', 'a', 1000000, 5,)
+
+[handler_stream_handler]
+class=StreamHandler
+level=WARNING
+formatter=formatter
+args=(sys.stderr,)
+
+[formatter_formatter]
+format=%(asctime)s %(module)-10s %(levelname)-8s %(message)s
