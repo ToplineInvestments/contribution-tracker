@@ -84,10 +84,11 @@ class Excel:
         self.header_list = []
         self.summary_sheet = None
         self.workbook = None
-        self.users = DB().get_user_ids()
+        self.users = None
         try:
             self.workbook = openpyxl.load_workbook(filename)
             self.get_sheets()
+            self.get_users()
         except FileNotFoundError:
             logger.error("File not found: %s", Path(filename).absolute())
 
@@ -119,11 +120,14 @@ class Excel:
         amount = float(transaction[4].replace(",", ""))
 
         # determine user
-        user_ids = [ui for ui, u in enumerate(self.users) for ri, r in enumerate(ref) if r in u]
+        # usernames retrieved from database to account for alternatives. If match is found, index is determined from
+        # internal user list to retain spreadsheet order
+        db_users = DB().get_user_ids()
+        user_ids = [ui for ui, u in enumerate(db_users) for ri, r in enumerate(ref) if r in u]
         if len(user_ids) is not 1:
             logger.debug("Error finding user in reference: %s", ref)
             return False
-        user_id = user_ids[0]
+        user_id = self.users.index(db_users[user_ids[0]][0])
 
         # find month in transaction reference
         month_ids = [mi for mi, m in enumerate(months) for ri, r in enumerate(ref) if r in m]
@@ -246,6 +250,17 @@ class Excel:
                 name = [i if type(i) is int else (next((j for j, x in enumerate(months) if i in x), None)) for i in s]
                 self.sheet_list.append(name)
         self.sheet_names.remove(self.summary_sheet.title)
+
+    def get_users(self):
+        row = 5
+        self.users = []
+        while True:
+            user = self.summary_sheet.cell(row=row, column=2).value
+            if user is None:
+                break
+            else:
+                self.users.append(user)
+                row += 1
 
     def get_column_headers(self, sheet):
         # Format transaction header
