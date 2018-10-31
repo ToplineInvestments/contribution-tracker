@@ -12,12 +12,12 @@ class DB:
         if Path(filename).is_file():
             self.connection = sqlite3.connect(self.filename)
         else:
-            logger.warning('Database file not found: {}. Creating database'.format(Path(filename).absolute()))
+            logger.warning('Database file not found: %s. Creating database', Path(filename).absolute())
             if Path(user_json).is_file():
                 self.connection = sqlite3.connect(self.filename)
                 self.initialise_db(user_json)
             else:
-                logger.error('User file not found: {}. Unable to create database'.format(Path(user_json).absolute()))
+                logger.error('User file not found: %s. Unable to create database', Path(user_json).absolute())
                 self.connection = None
 
     def initialise_db(self, user_json_filename):
