@@ -30,20 +30,20 @@ FILENAME = filename.xlsx
 keys=root
 
 [handlers]
-keys=rotating_file_handler,stream_handler
+keys=file_handler,stream_handler
 
 [formatters]
 keys=formatter
 
 [logger_root]
 level=DEBUG
-handlers=rotating_file_handler,stream_handler
+handlers=file_handler,stream_handler
 
-[handler_rotating_file_handler]
-class=handlers.RotatingFileHandler
+[handler_file_handler]
+class=FileHandler
 level=DEBUG
 formatter=formatter
-args=('log.log', 'a', 1000000, 5,)
+args=(__import__("datetime").datetime.now().strftime('%%Y-%%m-%%d_%%H-%%M-%%S.log'), 'a')
 
 [handler_stream_handler]
 class=StreamHandler
