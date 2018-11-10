@@ -22,10 +22,34 @@ class DB:
 
     def initialise_db(self, user_json_filename):
         self.connection.cursor().execute('''CREATE TABLE users(
-                                            id INTEGER PRIMARY KEY, name TEXT, surname TEXT, email TEXT,
-                                            username TEXT, alt_username TEXT, last_contrib_date DATE,
-                                            last_contrib_amount REAL, total_contrib REAL, share REAL)
+                                            id INTEGER PRIMARY KEY, name TEXT NOT NULL, 
+                                            surname TEXT NOT NULL,
+                                            email TEXT UNIQUE NOT NULL,
+                                            username TEXT UNIQUE NOT NULL,
+                                            alt_username TEXT,
+                                            last_transaction_id INTEGER,
+                                            total REAL,
+                                            share REAL)
                                          ''')
+        self.connection.cursor().execute('''CREATE TABLE accounts(
+                                            acc_num INTEGER PRIMARY KEY,
+                                            name TEXT NOT NULL,
+                                            balance REAL)
+                                        ''')
+        self.connection.cursor().execute('''CREATE TABLE transactions(
+                                            id INTEGER PRIMARY KEY,
+                                            acc_num INTEGER NOT NULL,
+                                            date DATE NOT NULL,
+                                            description TEXT,
+                                            reference TEXT,
+                                            amount REAL NOT NULL,
+                                            user_id INTEGER,
+                                            contrib_month TEXT,
+                                            contrib_year INTEGER)
+                                        ''')
+        self.connection.cursor().execute('''CREATE UNIQUE INDEX unique_transaction 
+                                            ON transactions(acc_num, date, description, reference, amount)
+                                        ''')
         users = self.get_users_from_json(user_json_filename)
         for key, value in users.items():
             if 'alt_id' in value:
