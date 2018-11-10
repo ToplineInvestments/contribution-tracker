@@ -1,21 +1,10 @@
 import re
 import logging
 from datetime import datetime
+from topline import MONTHS
+
 
 logger = logging.getLogger(__name__)
-
-months = [['JANUARY', 'JAN'],
-          ['FEBRUARY', 'FEB'],
-          ['MARCH', 'MAR'],
-          ['APRIL', 'APR'],
-          ['MAY'],
-          ['JUNE', 'JUN'],
-          ['JULY', 'JUL'],
-          ['AUGUST', 'AUG'],
-          ['SEPTEMBER', 'SEPT', 'SEP'],
-          ['OCTOBER', 'OCT'],
-          ['NOVEMBER', 'NOV'],
-          ['DECEMBER', 'DEC']]
 
 
 def is_number(s):
@@ -87,17 +76,17 @@ class Transaction:
 
         if self.type == 'contribution':
             # find month in transaction reference
-            self.month_id = [mi for mi, m in enumerate(months) for ri, r in enumerate(ref) if r in m][0]
+            self.month_id = [mi for mi, m in MONTHS.items() for ri, r in enumerate(ref) if r in m][0]
             years = [r for i, r in enumerate(ref) if is_number(r)]
             self.year = (years[0] if len(years) == 1 else self.date.year) % 2000
         else:
             self.year = self.date.year % 2000
         self.year += 2000
         if not self.month_id:
-            self.month_id = self.date.month - 1
+            self.month_id = self.date.month
 
         if self.type == 'contribution':
-            self.month = months[self.month_id][0].capitalize()
+            self.month = MONTHS[self.month_id][0].capitalize()
 
         return True
 

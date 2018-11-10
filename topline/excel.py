@@ -3,6 +3,7 @@ import openpyxl.utils
 import re
 from pathlib import Path
 import logging
+from topline import MONTHS
 
 # imports for openpyxl merge patch
 from openpyxl.worksheet import Worksheet
@@ -12,18 +13,6 @@ from openpyxl.worksheet.merge import MergeCells
 
 logger = logging.getLogger(__name__)
 
-months = [['JANUARY', 'JAN'],
-          ['FEBRUARY', 'FEB'],
-          ['MARCH', 'MAR'],
-          ['APRIL', 'APR'],
-          ['MAY'],
-          ['JUNE', 'JUN'],
-          ['JULY', 'JUL'],
-          ['AUGUST', 'AUG'],
-          ['SEPTEMBER', 'SEPT', 'SEP'],
-          ['OCTOBER', 'OCT'],
-          ['NOVEMBER', 'NOV'],
-          ['DECEMBER', 'DEC']]
 header_row = 32
 user_row = 33
 roi_row = 71
@@ -138,7 +127,7 @@ class Excel:
             else:
                 # format sheet name
                 s = format_string(sheet)
-                name = [i if type(i) is int else (next((j for j, x in enumerate(months) if i in x), None)) for i in s]
+                name = [i if type(i) is int else (next((j for j, x in MONTHS.items() if i in x), None)) for i in s]
                 self.sheet_list.append(name)
         self.sheet_names.remove(self.summary_sheet.title)
 
@@ -157,7 +146,7 @@ class Excel:
     def get_column_headers(self, sheet):
         # Format transaction header
         header = sheet[header_row]
-        header = [[h.value.month - 1, h.value.year % 2000] if h.is_date else str(h.value) for h in header]
+        header = [[h.value.month, h.value.year % 2000] if h.is_date else str(h.value) for h in header]
         return header
 
     def get_target_sheet(self, month, year):
