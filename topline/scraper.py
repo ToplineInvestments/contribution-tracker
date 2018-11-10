@@ -144,6 +144,7 @@ class FNB(Scraper):
                     self.driver.find_element_by_id(self.accounts[account]['nickname']).click()
 
                 self.wait_for_loader()
+                self.accounts[account]['transactions'] = []
                 transactions = self.get_transactions()
                 if transactions:
                     self.accounts[account]['transactions'] = transactions
