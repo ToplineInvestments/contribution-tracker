@@ -8,12 +8,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
 import time
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
 
 class Scraper:
-
     def __init__(self, driver, headless=False, driver_path=None):
         driver = driver.lower()
         self.driver = None
@@ -119,12 +119,16 @@ class FNB(Scraper):
             return False
 
         accounts_table = self.driver.find_element_by_id("accountsTable_tableContent")
-        accounts = accounts_table.find_elements_by_xpath('//*[contains(@id,"nickname")]')
+        account_names = accounts_table.find_elements_by_xpath('//*[contains(@id,"nickname")]')
         account_numbers = accounts_table.find_elements_by_xpath('//*[contains(@id,"accountNumber")]')
+        account_balances = accounts_table.find_elements_by_xpath('//*[contains(@id,"ledgerBalance")]')
         
-        for i in range(len(accounts)):
-            acc_num = account_numbers[i].text
-            self.accounts[accounts[i].get_attribute('id')] = {'name': accounts[i].text, 'acc_num': acc_num}
+        for i in range(len(account_names)):
+            name = account_names[i].text
+            nickname = account_names[i].get_attribute('id')
+            acc_num = int(account_numbers[i].text)
+            balance = re.sub("[^0-9.]", '', account_balances[i].text)
+            self.accounts[acc_num] = {'name': name, 'nickname': nickname, 'balance': balance}
         logger.info("Found %d accounts", len(self.accounts))
         
         if get_transactions:
@@ -133,11 +137,11 @@ class FNB(Scraper):
                 # Open account
                 # Can't click account if link is off page so scroll to bottom and click again if it fails
                 try:
-                    self.driver.find_element_by_id(account).click()
+                    self.driver.find_element_by_id(self.accounts[account]['nickname']).click()
                 except WebDriverException:
                     self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                     # Another try catch?
-                    self.driver.find_element_by_id(account).click()
+                    self.driver.find_element_by_id(self.accounts[account]['nickname']).click()
 
                 self.wait_for_loader()
                 transactions = self.get_transactions()
