@@ -76,6 +76,8 @@ patch_worksheet()
 
 
 class Excel:
+    user_ids = None
+
     def __init__(self, filename):
         self.filename = filename
         self.sheet_names = None
@@ -83,13 +85,14 @@ class Excel:
         self.header_list = []
         self.summary_sheet = None
         self.workbook = None
-        self.users = None
         try:
             self.workbook = openpyxl.load_workbook(filename)
             self.get_sheets()
-            self.get_users()
         except FileNotFoundError:
             logger.error("File not found: %s", Path(filename).absolute())
+        
+        if not Excel.user_ids:
+            Excel.user_ids = self.get_user_ids()
 
     def add_transaction(self, transaction):
         # determine which sheet to use for current transaction
@@ -109,7 +112,7 @@ class Excel:
             return False
 
         if transaction.type == 'contribution':
-            user_offset = [ui for ui, u in enumerate(self.users) if u[1] == transaction.username]
+            user_offset = [ui for ui, u in enumerate(Excel.user_ids) if u[1] == transaction.username]
             row = user_row + user_offset[0]
         elif transaction.type == 'expense':
             row = expense_row
@@ -125,7 +128,7 @@ class Excel:
                 return False
         else:
             return False
-        return self.write_to_sheet(sheet, row, column, abs(transaction.amount))
+        return self.write_to_sheet(sheet, row, column, abs(transaction.amount), add=True)
 
     def get_sheets(self):
         self.sheet_names = self.workbook.sheetnames
@@ -139,16 +142,17 @@ class Excel:
                 self.sheet_list.append(name)
         self.sheet_names.remove(self.summary_sheet.title)
 
-    def get_users(self):
+    def get_user_ids(self):
         row = 5
-        self.users = []
+        user_ids = []
         while True:
-            user = self.summary_sheet.cell(row=row, column=2).value
-            if user is None:
+            user_id = self.summary_sheet.cell(row=row, column=2).value
+            if user_id is None:
                 break
             else:
-                self.users.append(user)
+                user_ids.append([row - 5, user_id])
                 row += 1
+        return user_ids
 
     def get_column_headers(self, sheet):
         # Format transaction header
@@ -164,7 +168,7 @@ class Excel:
             return None
         return self.workbook[self.sheet_names[sheet_id[0]]]
 
-    def write_to_sheet(self, sheet, row, col, value, overwrite=False):
+    def write_to_sheet(self, sheet, row, col, value, overwrite=False, add=False):
         target_cell = sheet.cell(row=row, column=col)
         if target_cell.protection.locked:
             logger.warning("[%s] %s%s is locked!", sheet.title, openpyxl.utils.get_column_letter(col), row)
@@ -173,11 +177,15 @@ class Excel:
         cell_val = target_cell.value
         if cell_val == 0 or cell_val == '-' or cell_val is None or overwrite:
             sheet.cell(row=row, column=col, value=value)
-        elif cell_val == value:
-            logger.warning("Transaction already processed!")
-            return False
+            logger.info("Transaction written to sheet [%s] %s%s.",
+                        sheet.title, openpyxl.utils.get_column_letter(col), row)
+        elif add:
+            logger.info("[%s] %s%s contains data! Adding to existing value!",
+                        sheet.title, openpyxl.utils.get_column_letter(col), row)
+            sheet.cell(row=row, column=col, value=cell_val + value)
         else:
-            logger.warning("[%s] %s%s contains data!", sheet.title, openpyxl.utils.get_column_letter(col), row)
+            logger.warning("[%s] %s%s contains data! Transaction not written to sheet!",
+                           sheet.title, openpyxl.utils.get_column_letter(col), row)
             return False
         return True
 
