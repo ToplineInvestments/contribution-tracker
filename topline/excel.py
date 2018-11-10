@@ -2,7 +2,6 @@ import openpyxl
 import openpyxl.utils
 import re
 from pathlib import Path
-from topline.db import DB
 import logging
 
 # imports for openpyxl merge patch
@@ -92,152 +91,41 @@ class Excel:
         except FileNotFoundError:
             logger.error("File not found: %s", Path(filename).absolute())
 
-    def add_transaction(self, account_name, account_number, transaction):
-        # All income, including contributions, and expenses should be from the cheque account
-        # All other accounts are savings and fixed deposit accounts so should only have profit share returns
-        logger.info('Processing transaction: %s', transaction)
-        success = False
-        if 'cheque' in account_name.lower():
-            success = self.process_contribution(transaction)
-            if not success:
-                success = self.process_income_expense(transaction)
-        elif 'savings' in account_name.lower() or 'deposit' in account_name.lower():
-            success = self.process_roi(account_number, transaction)
-
-        if not success:
-            logger.warning('Unable to process transaction')
-            return False
-        return True
-
-    def process_contribution(self, transaction):
-        # Find transaction reference. Check reference column first then description column
-        ref = format_string(transaction[2]) or format_string(transaction[1])
-        if len(ref) < 3:
-            logger.debug("Reference Error - Too few parameters: %s", ref)
-            return False
-
-        date = format_string(transaction[0])
-        amount = float(transaction[4].replace(",", ""))
-
-        # determine user
-        # usernames retrieved from database to account for alternatives. If match is found, index is determined from
-        # internal user list to retain spreadsheet order
-        db_users = DB().get_user_ids()
-        user_ids = [ui for ui, u in enumerate(db_users) for ri, r in enumerate(ref) if r in u]
-        if len(user_ids) is not 1:
-            logger.debug("Error finding user in reference: %s", ref)
-            return False
-        user_id = self.users.index(db_users[user_ids[0]][0])
-
-        # find month in transaction reference
-        month_ids = [mi for mi, m in enumerate(months) for ri, r in enumerate(ref) if r in m]
-        if not month_ids:
-            month_ids = [mi for mi, m in enumerate(months) if date[1] in m]
-            if len(month_ids) is not 1:
-                logger.debug("Error finding month in reference: %s", ref)
-                return False
-        month_id = month_ids[0]
-
-        years = [r for i, r in enumerate(ref) if is_number(r)]
-        year_id = (years[0] if len(years) == 1 else date[2]) % 2000
-
+    def add_transaction(self, transaction):
         # determine which sheet to use for current transaction
-        sheet = self.get_target_sheet(month_id, year_id)
+        sheet = self.get_target_sheet(transaction.month_id, transaction.year % 2000)
         if not sheet:
-            logger.debug("Error finding correct sheet for transaction. ref: %s", ref)
+            logger.debug("Error finding correct sheet for transaction. Month = %s, Year = %s",
+                         transaction.month_id, transaction.year % 2000)
             return False
         header = self.get_column_headers(sheet)
 
         # find correct column for contribution month
         try:
-            column = header.index([month_id, year_id]) + 1
+            column = header.index([transaction.month_id, transaction.year % 2000]) + 1
         except ValueError:
-            logger.debug("Error finding correct column for month %s, year %s", month_id, year_id)
+            logger.debug("Error finding correct column: Month %s, Year %s",
+                         transaction.month_id, transaction.year % 2000)
             return False
 
-        # find correct row for user
-        row = user_row + user_id
-
-        return self.write_to_sheet(sheet, row, column, amount)
-
-    def process_income_expense(self, transaction):
-        # Find transaction reference. Check reference column first then description column
-        ref = transaction[2] if format_string(transaction[2]) else transaction[1]
-        date = format_string(transaction[0])
-        amount = float(transaction[4].replace(",", ""))
-
-        if ref == '#MONTHLY ACCOUNT FEE':
+        if transaction.type == 'contribution':
+            user_offset = [ui for ui, u in enumerate(self.users) if u[1] == transaction.username]
+            row = user_row + user_offset[0]
+        elif transaction.type == 'expense':
             row = expense_row
-        else:
-            logger.info('Unknown income or expense!')
-            return False
-
-        month_ids = [mi for mi, m in enumerate(months) if date[1] in m]
-        if len(month_ids) is not 1:
-            logger.debug("Error finding month in date: %s", date)
-            return False
-        month_id = month_ids[0]
-
-        year_id = date[2] % 2000
-
-        # determine which sheet to use for current transaction
-        sheet = self.get_target_sheet(month_id, year_id)
-        if not sheet:
-            logger.debug("Error finding correct sheet for transaction. ref: %s", ref)
-            return False
-        header = self.get_column_headers(sheet)
-
-        # find correct column for contribution month
-        try:
-            column = header.index([month_id, year_id]) + 1
-        except ValueError:
-            logger.debug("Error finding correct column for month %s, year %s", month_id, year_id)
-            return False
-        return self.write_to_sheet(sheet, row, column, abs(amount))
-
-    def process_roi(self, account_number, transaction):
-        # Find transaction reference.
-        ref = transaction[1]
-        date = format_string(transaction[0])
-        amount = float(transaction[4].replace(",", ""))
-
-        if 'profit share' in ref.lower():
-            month_ids = [mi for mi, m in enumerate(months) if date[1] in m]
-            if len(month_ids) is not 1:
-                logger.debug("Error finding month in date: %s", date)
-                return False
-            month_id = month_ids[0]
-
-            year_id = date[2] % 2000
-
-            # determine which sheet to use for current transaction
-            sheet = self.get_target_sheet(month_id, year_id)
-            if not sheet:
-                logger.debug("Error finding correct sheet for transaction. ref: %s", ref)
-                return False
-            header = self.get_column_headers(sheet)
-
-            # find correct column for contribution month
-            try:
-                column = header.index([month_id, year_id]) + 1
-            except ValueError:
-                logger.debug("Error finding correct column for month %s, year %s", month_id, year_id)
-                return False
-
-            roi_range = sheet['A'+str(roi_row):'A'+str(income_row-1)]
+        elif transaction.type == 'roi':
+            roi_range = sheet['A' + str(roi_row):'A' + str(income_row - 1)]
             row = 0
             for r in roi_range:
-                if account_number in r[0].value:
+                if str(transaction.account) in r[0].value:
                     row = r[0].row
                     break
             if not row:
-                logger.debug('Unable to find row for ROI transaction from account: %s', account_number)
+                logger.debug('Unable to find row for ROI transaction')
                 return False
-
-            return self.write_to_sheet(sheet, row, column, amount)
         else:
-            logger.debug("Not an ROI transaction!")
             return False
+        return self.write_to_sheet(sheet, row, column, abs(transaction.amount))
 
     def get_sheets(self):
         self.sheet_names = self.workbook.sheetnames
