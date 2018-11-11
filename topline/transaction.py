@@ -25,6 +25,14 @@ def format_string(s):
     return string_list
 
 
+def date_check(month1, year1, month2, year2):
+    diff = (year2 - year1) * 12 + month2 - month1
+    offset = int((12 * round(diff / 12)) / 12)
+    if offset > 0:
+        logger.debug("Date updated: %s/%s -> %s/%s", month1, year1, month1, year1 + offset)
+    return month1, year1 + offset
+
+
 class Transaction:
     usernames = None
     accounts = None
@@ -84,6 +92,8 @@ class Transaction:
         self.year += 2000
         if not self.month_id:
             self.month_id = self.date.month
+
+        self.month_id, self.year = date_check(self.month_id, self.year, self.date.month, self.date.year)
 
         if self.type == 'contribution':
             self.month = MONTHS[self.month_id][0].capitalize()
