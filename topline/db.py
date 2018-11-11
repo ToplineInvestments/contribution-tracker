@@ -2,6 +2,8 @@ import sqlite3
 import json
 from pathlib import Path
 import logging
+import csv
+from topline.transaction import Transaction
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +82,41 @@ class DB:
                 "INSERT INTO users (name, surname, email, username, alt_username) VALUES (?,?,?,?,?)",
                 (value['firstName'], value['lastName'], value['email'], key, key2))
         self.connection.commit()
+
+    def initialise_transactions(self, filename):
+        logger.debug("Initialising transactions table")
+        if not Path(filename).is_file():
+            logger.warning('Transaction history file not found: %s. Unable to initialise transactions table',
+                           Path(filename).absolute())
+        else:
+            transactions = self.get_transactions_from_csv(filename)
+            logger.debug("Read %s transactions from file", len(transactions))
+            count = 0
+            Transaction.usernames = self.get_usernames()
+            Transaction.accounts = self.get_accounts()
+            for trans in transactions:
+                logger.debug("Processing transaction %s/%s: date = %s, desc = %s, ref = %s, amount = %s.",
+                             count + 1, len(transactions), trans[0][0], trans[0][1], trans[0][2], trans[0][4])
+                t = Transaction(trans[0], trans[1])
+                if self.check_transaction(t.account, t.date, t.description, t.reference, t.amount):
+                    continue
+                contrib = t.process_transaction()
+                t.transaction_id = self.add_transaction(t.account, t.date, t.description, t.reference, t.amount,
+                                                        t.user_id, t.month, t.year)
+                if contrib and t.transaction_id:
+                    self.update_user(t.user_id, t.username, t.date, t.amount, t.transaction_id)
+                count += 1
+            logger.info("Processed %s/%s transactions in %s.", count, len(transactions), filename)
+
+    @staticmethod
+    def get_transactions_from_csv(filename):
+        logger.debug("Reading transactions from %s file", filename)
+        transactions = []
+        with open(filename, 'r') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                transactions.append([[row[0].replace('-', ' '), row[1], row[2], '', row[3], row[4]], int(row[5])])
+        return transactions
 
     def get_usernames(self):
         logger.debug("Getting usernames from database")
