@@ -135,3 +135,33 @@ class DB:
         logger.info("Removing account from database: %s - %s, balance = %.2f", account[0], account[1], account[2])
         self.cursor.execute("DELETE FROM accounts WHERE acc_num = ?", (acc_num,))
         self.connection.commit()
+
+    def add_transaction(self, acc_num, date, description, reference, amount, user_id, month=None, year=None):
+        try:
+            logger.debug("Adding transaction to database")
+            self.cursor.execute('''INSERT INTO transactions (
+                                        acc_num, date, description, reference, amount, 
+                                        user_id, contrib_month, contrib_year)
+                                   VALUES (?,?,?,?,?,?,?,?)''',
+                                (acc_num, date, description, reference, amount, user_id, month, year))
+            self.connection.commit()
+        except sqlite3.IntegrityError:
+            logger.debug("Transaction already in database")
+            return False
+        return self.cursor.lastrowid
+
+    def check_transaction(self, acc_num, date, description, reference, amount):
+        result = self.cursor.execute('''SELECT rowid
+                                        FROM transactions
+                                        WHERE acc_num = ? AND
+                                              date = ? AND
+                                              description = ? AND
+                                              reference = ? AND
+                                              amount = ?''',
+                                     (acc_num, date, description, reference, amount))
+        if not result.fetchone():
+            logger.debug("Transaction not in database")
+            return False
+        else:
+            logger.debug("Transaction already in database")
+            return True
