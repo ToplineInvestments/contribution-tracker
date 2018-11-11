@@ -84,7 +84,10 @@ class Transaction:
 
         if self.type == 'contribution':
             # find month in transaction reference
-            self.month_id = [mi for mi, m in MONTHS.items() for ri, r in enumerate(ref) if r in m][0]
+            month_ids = [mi for mi, m in MONTHS.items() for ri, r in enumerate(ref) if r in m]
+            self.month_id = month_ids[0] if len(month_ids) == 1 else None
+            if not self.month_id:
+                self.month_id = ref[1] if type(ref[1]) is int and ref[1] < 13 else None
             years = [r for i, r in enumerate(ref) if is_number(r)]
             self.year = (years[0] if len(years) == 1 else self.date.year) % 2000
         else:
