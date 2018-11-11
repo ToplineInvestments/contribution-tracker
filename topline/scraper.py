@@ -128,7 +128,7 @@ class FNB(Scraper):
             nickname = account_names[i].get_attribute('id')
             acc_num = int(account_numbers[i].text)
             balance = re.sub("[^0-9.]", '', account_balances[i].text)
-            self.accounts[acc_num] = {'name': name, 'nickname': nickname, 'balance': balance}
+            self.accounts[acc_num] = {'name': name, 'nickname': nickname, 'balance': float(balance)}
         logger.info("Found %d accounts", len(self.accounts))
         
         if get_transactions:
