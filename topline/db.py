@@ -101,3 +101,37 @@ class DB:
                                WHERE id = ?''',
                             (transaction_id, total + amount, share, user_id))
         self.connection.commit()
+
+    def get_accounts(self):
+        logger.debug("Fetching accounts from database")
+        result = self.cursor.execute("SELECT acc_num, name FROM accounts")
+        accounts = result.fetchall()
+        logger.debug("Fetched %s accounts", len(accounts))
+        return accounts
+
+    def add_account(self, acc_num, name, balance):
+        logger.info("Adding account to database: %s - %s, balance = R %.2f", acc_num, name, float(balance))
+        self.cursor.execute("INSERT INTO accounts (acc_num, name, balance) VALUES (?,?,?)",
+                            (acc_num, name, balance))
+        self.connection.commit()
+
+    def update_account(self, acc_num, name, balance):
+        result = self.cursor.execute("SELECT balance FROM accounts WHERE acc_num = ?", (acc_num,))
+        current_balance = result.fetchone()[0]
+        if current_balance is None:
+            logger.info("Account not in database. Adding account: %s - %s", acc_num, name)
+            self.add_account(acc_num, name, balance)
+        elif current_balance != balance:
+            logger.info("Updating balance: %s - %s, R %.2f -> R %.2f", acc_num, name, current_balance, balance)
+            self.cursor.execute("UPDATE accounts SET balance = ? WHERE acc_num = ?",
+                                (float(balance), acc_num,))
+            self.connection.commit()
+        else:
+            logger.debug("Account %s - %s up to date", acc_num, name)
+
+    def remove_account(self, acc_num):
+        result = self.cursor.execute("SELECT * FROM accounts WHERE acc_num = ?", (acc_num,))
+        account = result.fetchone()
+        logger.info("Removing account from database: %s - %s, balance = %.2f", account[0], account[1], account[2])
+        self.cursor.execute("DELETE FROM accounts WHERE acc_num = ?", (acc_num,))
+        self.connection.commit()
