@@ -20,8 +20,8 @@ def format_string(s):
     # eg: "AA - AUG17" -> ['AA', 'AUG', '17']
     #     "NOV '17 - OCT '18" -> ['NOV', '17', 'OCT', '18']
     s = s.upper()
-    string_list = re.findall(r"\d+|[a-z]+", s, re.I)
-    string_list = [int(i) if is_number(i) else i.upper() for i in string_list]
+    string_list = re.findall(r"\d+|[a-z.]+", s, re.I)
+    string_list = [int(i) if is_number(i) else i.replace('.', '').upper() for i in string_list]
     return string_list
 
 
