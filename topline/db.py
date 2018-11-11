@@ -81,7 +81,23 @@ class DB:
                 (value['firstName'], value['lastName'], value['email'], key, key2))
         self.connection.commit()
 
-    def get_user_ids(self):
-        result = self.connection.cursor().execute("SELECT username, alt_username FROM users")
+    def get_usernames(self):
+        logger.debug("Getting usernames from database")
+        result = self.cursor.execute("SELECT id, username, alt_username FROM users ORDER BY id")
         user_list = result.fetchall()
-        return [[uid[0], uid[1]] if uid[1] else [uid[0]] for uid in user_list]
+        # return [[uid[0], uid[1], uid[2]] if uid[2] else [uid[0], uid[1]] for uid in user_list]
+        return user_list
+
+    def update_user(self, user_id, username, date, amount, transaction_id):
+        result = self.cursor.execute("SELECT total FROM users WHERE id = ?", (user_id,))
+        total = result.fetchone()[0] or 0
+        share = None
+        logger.info("Updating user contribution from %s: R %.2f received on %s, total: R %.2f -> R %.2f",
+                    username, amount, date, total, total + amount)
+        self.cursor.execute('''UPDATE users 
+                               SET last_transaction_id = ?,
+                                   total = ?,
+                                   share = ?
+                               WHERE id = ?''',
+                            (transaction_id, total + amount, share, user_id))
+        self.connection.commit()
