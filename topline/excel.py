@@ -119,6 +119,17 @@ class Excel:
             return False
         return self.write_to_sheet(sheet, row, column, abs(transaction.amount), add=True)
 
+    def update_account_balances(self, account, balance):
+        account_row = 25
+        sheet = self.summary_sheet
+        cell = [c[0] for c in sheet['A{}:A{}'.format(account_row, sheet.max_row)] if c[0].value == account]
+        if len(cell) == 1:
+            old_balance = sheet.cell(row=cell[0].row, column=3).value
+            logger.info("Updating account %s balance: R %.2f -> R %.2f", account, old_balance, balance)
+            sheet.cell(row=cell[0].row, column=3).value = balance
+        else:
+            logger.warning("Unable to update account balance. Account row not found: %s", account)
+
     def get_sheets(self):
         self.sheet_names = self.workbook.sheetnames
         for sheet in self.sheet_names:
@@ -134,7 +145,7 @@ class Excel:
     def get_user_ids(self):
         row = 5
         user_ids = []
-        while True:
+        while row < self.summary_sheet.max_row:
             user_id = self.summary_sheet.cell(row=row, column=2).value
             if user_id is None:
                 break
