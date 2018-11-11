@@ -42,8 +42,8 @@ class Transaction:
         self.transaction = transaction
         self.transaction_id = None
         self.date = datetime.strptime(transaction[0], '%d %b %Y').date()
-        self.description = transaction[1]
-        self.reference = transaction[2]
+        self.description = transaction[1].upper()
+        self.reference = transaction[2].upper() if format_string(transaction[2]) else ''
         self.amount = float(transaction[4].replace(",", ""))
         self.username = None
         self.user_id = None
