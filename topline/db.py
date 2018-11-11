@@ -9,24 +9,20 @@ logger = logging.getLogger(__name__)
 
 
 class DB:
-    def __init__(self, filename='topline.db', user_json='users.json'):
+    def __init__(self, filename='topline.db', user_file=None, transaction_file=None):
         self.filename = filename
-        if Path(filename).is_file():
+        if not Path(filename).is_file() and not user_file:
+            logger.error('Database and User file not found. Unable to create database')
+            self.connection = None
+        else:
             logger.debug("Connecting to database %s", self.filename)
             self.connection = sqlite3.connect(self.filename)
-            self.cursor = self.connection.cursor()
-        else:
-            logger.warning('Database file not found: %s. Creating database', Path(filename).absolute())
-            if Path(user_json).is_file():
-                self.connection = sqlite3.connect(self.filename)
-                self.initialise_db(user_json)
-            else:
-                logger.error('User file not found: %s. Unable to create database', Path(user_json).absolute())
-                self.connection = None
+            self.cursor = self.connection.cursor()           
+            self.initialise_db(user_file, transaction_file)
 
-    def initialise_db(self, user_json):
+    def initialise_db(self, user_file=None, transactions_file=None):
         logger.info("Initialising database tables")
-        self.cursor.execute('''CREATE TABLE users(
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS users(
                                             id INTEGER PRIMARY KEY,
                                             name TEXT NOT NULL, 
                                             surname TEXT NOT NULL,
@@ -37,12 +33,12 @@ class DB:
                                             total REAL,
                                             share REAL)
                             ''')
-        self.cursor.execute('''CREATE TABLE accounts(
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS accounts(
                                             acc_num INTEGER PRIMARY KEY,
                                             name TEXT NOT NULL,
                                             balance REAL)
                             ''')
-        self.cursor.execute('''CREATE TABLE transactions(
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS transactions(
                                             id INTEGER PRIMARY KEY,
                                             acc_num INTEGER NOT NULL,
                                             date DATE NOT NULL,
@@ -53,13 +49,15 @@ class DB:
                                             contrib_month TEXT,
                                             contrib_year INTEGER)
                             ''')
-        self.cursor.execute('''CREATE UNIQUE INDEX unique_transaction 
+        self.cursor.execute('''CREATE UNIQUE INDEX IF NOT EXISTS unique_transaction 
                                             ON transactions(acc_num, date, description, reference, amount)
                             ''')
 
         self.connection.commit()
-        if user_json:
-            self.initialise_users(user_json)
+        if user_file:
+            self.initialise_users(user_file)
+        if transactions_file:
+            self.initialise_transactions(transactions_file)
 
     @staticmethod
     def get_users_from_json(json_filename):
@@ -78,9 +76,12 @@ class DB:
                 key2 = None
             logger.debug("Adding user: name = %s, surname = %s, email = %s, username = %s",
                          value['firstName'], value['lastName'], value['email'], key)
-            self.cursor.execute(
-                "INSERT INTO users (name, surname, email, username, alt_username) VALUES (?,?,?,?,?)",
-                (value['firstName'], value['lastName'], value['email'], key, key2))
+            try:
+                self.cursor.execute(
+                    "INSERT INTO users (name, surname, email, username, alt_username) VALUES (?,?,?,?,?)",
+                    (value['firstName'], value['lastName'], value['email'], key, key2))
+            except sqlite3.IntegrityError:
+                logger.warning("User %s %s already in database", value['firstName'], value['lastName'])
         self.connection.commit()
 
     def initialise_transactions(self, filename):
@@ -129,7 +130,7 @@ class DB:
         result = self.cursor.execute("SELECT total FROM users WHERE id = ?", (user_id,))
         total = result.fetchone()[0] or 0
         share = None
-        logger.info("Updating user contribution from %s: R %.2f received on %s, total: R %.2f -> R %.2f",
+        logger.info("Updating user %s: R %.2f received on %s, total: R %.2f -> R %.2f",
                     username, amount, date, total, total + amount)
         self.cursor.execute('''UPDATE users 
                                SET last_transaction_id = ?,
