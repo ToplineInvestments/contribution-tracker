@@ -120,10 +120,12 @@ class DB:
         return transactions
 
     def get_usernames(self):
-        logger.debug("Getting usernames from database")
+        logger.debug("Fetching usernames from database")
         result = self.cursor.execute("SELECT id, username, alt_username FROM users ORDER BY id")
         user_list = result.fetchall()
-        # return [[uid[0], uid[1], uid[2]] if uid[2] else [uid[0], uid[1]] for uid in user_list]
+        if not user_list:
+            return False
+        logger.debug("Fetched %s users from database", len(user_list))
         return user_list
 
     def update_user(self, user_id, username, date, amount, transaction_id):
