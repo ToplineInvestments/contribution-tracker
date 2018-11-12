@@ -17,8 +17,14 @@ class DB:
         else:
             logger.debug("Connecting to database %s", self.filename)
             self.connection = sqlite3.connect(self.filename)
-            self.cursor = self.connection.cursor()           
-            self.initialise_db(user_file, transaction_file)
+            self.cursor = self.connection.cursor()
+            self.tables = self.get_tables()
+            if ('users' not in self.tables or not self.get_usernames()) and not user_file:
+                logger.error("Unable to initialise users table without user json file")
+                self.connection.close()
+                self.connection = None
+            else:
+                self.initialise_db(user_file, transaction_file)
 
     def initialise_db(self, user_file=None, transactions_file=None):
         logger.info("Initialising database tables")
@@ -58,6 +64,10 @@ class DB:
             self.initialise_users(user_file)
         if transactions_file:
             self.initialise_transactions(transactions_file)
+
+    def get_tables(self):
+        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        return [name[0] for name in self.cursor.fetchall()]
 
     @staticmethod
     def get_users_from_json(json_filename):
