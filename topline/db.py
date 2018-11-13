@@ -15,14 +15,13 @@ class DB:
             logger.error('Database and User file not found. Unable to create database')
             self.connection = None
         else:
-            logger.debug("Connecting to database %s", self.filename)
+            logger.info("Connecting to database %s", self.filename)
             self.connection = sqlite3.connect(self.filename)
             self.cursor = self.connection.cursor()
             self.tables = self.get_tables()
             if ('users' not in self.tables or not self.get_usernames()) and not user_file:
                 logger.error("Unable to initialise users table without user json file")
-                self.connection.close()
-                self.connection = None
+                self.close_db()
             else:
                 self.initialise_db(user_file, transaction_file)
 
@@ -71,13 +70,13 @@ class DB:
 
     @staticmethod
     def get_users_from_json(json_filename):
-        logger.debug("Reading user json file %s", json_filename)
+        logger.info("Reading user json file %s", json_filename)
         with open(json_filename, 'r') as f:
             users = json.load(f)
         return users
 
     def initialise_users(self, filename):
-        logger.debug("Initialising users table")
+        logger.info("Initialising users table")
         users = self.get_users_from_json(filename)
         for key, value in users.items():
             if 'alt_id' in value:
@@ -95,13 +94,13 @@ class DB:
         self.connection.commit()
 
     def initialise_transactions(self, filename):
-        logger.debug("Initialising transactions table")
+        logger.info("Initialising transactions table")
         if not Path(filename).is_file():
             logger.warning('Transaction history file not found: %s. Unable to initialise transactions table',
                            Path(filename).absolute())
         else:
             transactions = self.get_transactions_from_csv(filename)
-            logger.debug("Read %s transactions from file", len(transactions))
+            logger.info("Read %s transactions from file", len(transactions))
             count = 0
             Transaction.usernames = self.get_usernames()
             Transaction.accounts = self.get_accounts()
@@ -121,7 +120,7 @@ class DB:
 
     @staticmethod
     def get_transactions_from_csv(filename):
-        logger.debug("Reading transactions from %s file", filename)
+        logger.info("Reading transactions from %s file", filename)
         transactions = []
         with open(filename, 'r') as f:
             reader = csv.reader(f)
@@ -135,7 +134,7 @@ class DB:
         user_list = result.fetchall()
         if not user_list:
             return False
-        logger.debug("Fetched %s users from database", len(user_list))
+        logger.info("Fetched %s users from database", len(user_list))
         return user_list
 
     def update_user(self, user_id, username, date, amount, transaction_id):
@@ -156,7 +155,7 @@ class DB:
         logger.debug("Fetching accounts from database")
         result = self.cursor.execute("SELECT acc_num, name FROM accounts")
         accounts = result.fetchall()
-        logger.debug("Fetched %s accounts", len(accounts))
+        logger.info("Fetched %s accounts from database", len(accounts))
         return accounts
 
     def add_account(self, acc_num, name, balance):

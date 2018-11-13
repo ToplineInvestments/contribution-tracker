@@ -87,8 +87,8 @@ class Excel:
         # determine which sheet to use for current transaction
         sheet = self.get_target_sheet(transaction.month_id, transaction.year % 2000)
         if not sheet:
-            logger.debug("Error finding correct sheet for transaction. Month = %s, Year = %s",
-                         transaction.month_id, transaction.year % 2000)
+            logger.warning("Error finding correct sheet for transaction. Month = %s, Year = %s",
+                           transaction.month_id, transaction.year % 2000)
             return False
         header = self.get_column_headers(sheet)
 
@@ -96,8 +96,8 @@ class Excel:
         try:
             column = header.index([transaction.month_id, transaction.year % 2000]) + 1
         except ValueError:
-            logger.debug("Error finding correct column: Month %s, Year %s",
-                         transaction.month_id, transaction.year % 2000)
+            logger.warning("Error finding correct column: Month %s, Year %s",
+                           transaction.month_id, transaction.year % 2000)
             return False
 
         if transaction.type == 'contribution':
@@ -113,7 +113,7 @@ class Excel:
                     row = r[0].row
                     break
             if not row:
-                logger.debug('Unable to find row for ROI transaction')
+                logger.warning('Unable to find row for ROI transaction')
                 return False
         else:
             return False
