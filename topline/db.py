@@ -215,3 +215,10 @@ class DB:
         else:
             logger.debug("Transaction already in database")
             return True
+
+    def close_db(self):
+        logger.info("Closing database connection!")
+        self.cursor.close()
+        self.connection.close()
+        self.cursor = None
+        self.connection = None
