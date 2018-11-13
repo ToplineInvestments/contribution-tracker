@@ -43,7 +43,7 @@ handlers=file_handler,stream_handler
 class=FileHandler
 level=DEBUG
 formatter=formatter
-args=(__import__("datetime").datetime.now().strftime('%%Y-%%m-%%d_%%H-%%M-%%S.log'), 'a')
+args=(__import__("datetime").datetime.now().strftime('%%Y%%m%%d_%%H%%M%%S.log'), 'a')
 
 [handler_stream_handler]
 class=StreamHandler
@@ -52,4 +52,4 @@ formatter=formatter
 args=(sys.stderr,)
 
 [formatter_formatter]
-format=%(asctime)s %(module)-10s %(levelname)-8s %(message)s
+format=%(asctime)s %(module)-12s %(levelname)-8s %(message)s
