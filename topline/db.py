@@ -57,6 +57,13 @@ class DB:
         self.cursor.execute('''CREATE UNIQUE INDEX IF NOT EXISTS unique_transaction 
                                             ON transactions(acc_num, date, description, reference, amount)
                             ''')
+        self.cursor.execute('''CREATE TRIGGER IF NOT EXISTS calc_share AFTER UPDATE OF total ON users
+                               BEGIN
+                                    UPDATE users
+                                    SET share = (total / (SELECT SUM(total) FROM users WHERE username <> 'TIG') * 100) 
+                                    WHERE username <> 'TIG';
+                               END
+                            ''')
 
         self.connection.commit()
         if user_file:
