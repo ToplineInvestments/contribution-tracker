@@ -144,6 +144,19 @@ class DB:
         logger.info("Fetched %s users from database", len(user_list))
         return user_list
 
+    def get_users(self):
+        logger.debug("Fetching users from database")
+        result = self.cursor.execute('''SELECT u.id, u.name, u.surname, u.email, u.username, u.alt_username,
+                                               t.amount, t.contrib_month, t.contrib_year, u.total, u.share
+                                        FROM users u LEFT JOIN transactions t
+                                        ON u.last_transaction_id=t.id
+                                     ''')
+        user_list = result.fetchall()
+        if not user_list:
+            return False
+        logger.info("Fetched %s users from database", len(user_list))
+        return user_list
+
     def update_user(self, user_id, username, date, amount, transaction_id):
         result = self.cursor.execute("SELECT total FROM users WHERE id = ?", (user_id,))
         total = result.fetchone()[0] or 0
