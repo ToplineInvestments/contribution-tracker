@@ -46,6 +46,9 @@ if fnb.driver:
         fnb.driver.quit()
 
 db_usernames = db.get_usernames()
+if not db_usernames:
+    logger.error("No users found in database.")
+    raise SystemExit(0)
 cur_accounts = list(fnb.accounts.keys())
 db_accounts = db.get_accounts()
 db_account_numbers = [account[0] for account in db_accounts]
