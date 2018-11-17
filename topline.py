@@ -72,7 +72,7 @@ if excel.workbook:
         db_count = 0
         excel_count = 0
         transaction_count = len(fnb.accounts[account]['transactions'])
-        if 'transactions' in fnb.accounts[account]:
+        if transaction_count > 0:
             for trans in reversed(fnb.accounts[account]['transactions']):
                 count += 1
                 logger.debug("Processing transaction %s/%s: date = %s, desc = %s, ref = %s, amount = %s.",
