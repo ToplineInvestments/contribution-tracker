@@ -16,7 +16,7 @@ class DB:
             self.connection = None
         else:
             logger.info("Connecting to database %s", self.filename)
-            self.connection = sqlite3.connect(self.filename)
+            self.connection = sqlite3.connect(self.filename, detect_types=sqlite3.PARSE_DECLTYPES)
             self.cursor = self.connection.cursor()
             self.tables = self.get_tables()
             if ('users' not in self.tables or not self.get_usernames()) and not user_file:
@@ -146,8 +146,8 @@ class DB:
 
     def get_users(self):
         logger.debug("Fetching users from database")
-        result = self.cursor.execute('''SELECT u.id, u.name, u.surname, u.email, u.username, u.alt_username,
-                                               t.amount, t.contrib_month, t.contrib_year, u.total, u.share
+        result = self.cursor.execute('''SELECT u.id, u.name, u.surname, u.email, u.username, t.date, t.amount,
+                                               t.contrib_month, t.contrib_year, u.total, u.share
                                         FROM users u LEFT JOIN transactions t
                                         ON u.last_transaction_id=t.id
                                      ''')
