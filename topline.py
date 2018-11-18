@@ -4,6 +4,7 @@ from logging.config import fileConfig
 from datetime import datetime, date
 from shutil import copy2
 from pathlib import Path
+import zipfile
 from topline.scraper import FNB
 from topline.excel import Excel
 from topline.db import DB
@@ -141,4 +142,16 @@ message = gmail.create_message('thassan743@gmail.com', 'Logfile - {}'.format(now
 gmail.send_message('me', message)
 
 db.close_db()
+
+logger.info("Making backup of database and excel workbook files.")
+backup = Path('backup')
+if not backup.exists():
+    backup.mkdir()
+zip_path = backup.joinpath('backup_{}.zip'.format(now.strftime('%Y%m%d_%H%M%S')))
+logger.info("Backup path: %s", zip_path)
+with zipfile.ZipFile(zip_path, 'w') as myzip:
+    myzip.write(db_file)
+    myzip.write(logfile)
+    myzip.write(wb_backup)
+
 logger.info("Done")
