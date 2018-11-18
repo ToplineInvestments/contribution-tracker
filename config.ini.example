@@ -43,7 +43,7 @@ handlers=file_handler,stream_handler
 class=FileHandler
 level=DEBUG
 formatter=formatter
-args=(__import__("datetime").datetime.now().strftime('%%Y%%m%%d_%%H%%M%%S.log'), 'a')
+args=(__import__("datetime").datetime.now().strftime('logs/%%Y%%m%%d_%%H%%M%%S.log'), 'a')
 
 [handler_stream_handler]
 class=StreamHandler

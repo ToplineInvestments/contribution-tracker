@@ -13,6 +13,7 @@ from topline.gmail import Gmail
 from topline import MONTHS
 
 now = datetime.now()
+Path('logs').mkdir(exist_ok=True)
 
 config = configparser.ConfigParser()
 if not config.read('config.ini'):
