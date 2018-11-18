@@ -114,24 +114,22 @@ user_details = db.get_users()
 gmail = Gmail()
 gmail.authenticate()
 for user in user_details:
-    if user[4] != "TIG":
+    if user[4] != "TIG" and user[9] is not None:
         logger.debug("User details: %s", user)
+        next_date = date(year=user[5].year + user[5].month // 12, month=user[5].month % 12 + 1, day=5)
+        if next_date < date(year=now.year + now.month // 12, month=now.month % 12 + 1, day=5):
+            next_date = date(year=now.year + now.month // 12, month=now.month % 12 + 1, day=5)
         msg = (f"Dear {user[1]} {user[2]},\n\n"
-               f"Please find attached the tracking sheet for {MONTHS[now.month][0].capitalize()} {now.year}.\n\n")
-        if user[9] is not None:
-            next_date = date(year=user[5].year + user[5].month // 12, month=user[5].month % 12 + 1, day=5)
-            if next_date < date(year=now.year + now.month // 12, month=now.month % 12 + 1, day=5):
-                next_date = date(year=now.year + now.month // 12, month=now.month % 12 + 1, day=5)
-            msg += (f"Your last contribution of R {user[6]:.2f} was received on {user[5].strftime('%d %B, %Y')} "
-                    f"for {user[7]} {user[8]}.\n"
-                    f"Your total contribution to date is R {user[9]:.2f} for a total share of {user[10]:.2f}%\n"
-                    f"Your next contribution is due by {next_date.strftime('%d %B, %Y')}. "
-                    f"The reference should be: {user[4]}-{next_date.strftime('%b-%y').upper()}.\n\n")
-
-        msg += (f"Please ensure that all details contained in this email and the tracking sheet are correct.\n"
-                f"If any errors are found, please contact thassan743@gmail.com.\n\n"
-                f"Thank you.\n"
-                f"The Topline Automated Contribution Tracker")
+               f"Please find attached the tracking sheet for {MONTHS[now.month][0].capitalize()} {now.year}.\n\n"
+               f"Your last contribution of R {user[6]:.2f} was received on {user[5].strftime('%d %B, %Y')} "
+               f"for {user[7]} {user[8]}.\n"
+               f"Your total contribution to date is R {user[9]:.2f} for a total share of {user[10]:.2f}%\n"
+               f"Your next contribution is due by {next_date.strftime('%d %B, %Y')}. "
+               f"The reference should be: {user[4]}-{next_date.strftime('%b-%y').upper()}.\n\n"
+               f"Please ensure that all details contained in this email and the tracking sheet are correct.\n"
+               f"If any errors are found, please contact thassan743@gmail.com.\n\n"
+               f"Thank you.\n"
+               f"The Topline Automated Contribution Tracker")
 
         logger.info("Sending email to %s %s: %s", user[1], user[2], user[3])
         message = gmail.create_message(user[3], 'Tracking - {}'.format(now.strftime('%B %Y')),
