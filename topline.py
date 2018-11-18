@@ -1,10 +1,17 @@
+import configparser
+import logging
+from logging.config import fileConfig
+from datetime import datetime, date
+from shutil import copy2
+from pathlib import Path
 from topline.scraper import FNB
 from topline.excel import Excel
 from topline.db import DB
 from topline.transaction import Transaction
-import configparser
-import logging
-from logging.config import fileConfig
+from topline.gmail import Gmail
+from topline import MONTHS
+
+now = datetime.now()
 
 config = configparser.ConfigParser()
 if not config.read('config.ini'):
@@ -93,7 +100,45 @@ if excel.workbook:
             excel.update_account_balances(account, float(fnb.accounts[account]['balance']))
         else:
             logger.info('No transactions for account: %s', fnb.accounts[account]['name'])
-    excel.close_workbook(overwrite=False, filename='master_update.xlsx')
+    excel.close_workbook(overwrite=True)
+
+wb_backup = 'TOPLINE TRACKING SHEET - {}.xlsx'.format(now.strftime('%B %Y'))
+copy2(excel_file, wb_backup)
+
+user_details = db.get_users()
+gmail = Gmail()
+gmail.authenticate()
+for user in user_details:
+    if user[4] != "TIG":
+        logger.debug("User details: %s", user)
+        msg = (f"Dear {user[1]} {user[2]},\n\n"
+               f"Please find attached the tracking sheet for {MONTHS[now.month][0].capitalize()} {now.year}.\n\n")
+        if user[9] is not None:
+            next_date = date(year=user[5].year + user[5].month // 12, month=user[5].month % 12 + 1, day=5)
+            if next_date < date(year=now.year + now.month // 12, month=now.month % 12 + 1, day=5):
+                next_date = date(year=now.year + now.month // 12, month=now.month % 12 + 1, day=5)
+            msg += (f"Your last contribution of R {user[6]:.2f} was received on {user[5].strftime('%d %B, %Y')} "
+                    f"for {user[7]} {user[8]}.\n"
+                    f"Your total contribution to date is R {user[9]:.2f} for a total share of {user[10]:.2f}%\n"
+                    f"Your next contribution is due by {next_date.strftime('%d %B, %Y')}. "
+                    f"The reference should be: {user[4]}-{next_date.strftime('%b-%y').upper()}.\n\n")
+
+        msg += (f"Please ensure that all details contained in this email and the tracking sheet are correct.\n"
+                f"If any errors are found, please contact thassan743@gmail.com.\n\n"
+                f"Thank you.\n"
+                f"The Topline Automated Contribution Tracker")
+
+        logger.info("Sending email to %s %s: %s", user[1], user[2], user[3])
+        message = gmail.create_message(user[3], 'Tracking - {}'.format(now.strftime('%B %Y')),
+                                       msg, wb_backup)
+        gmail.send_message('me', message)
+
+logfile = [h.baseFilename for h in logger.handlers if type(h) == logging.FileHandler][0]
+logfile = Path(logfile).name
+logger.info("Sending logfile {}".format(logfile))
+message = gmail.create_message('thassan743@gmail.com', 'Logfile - {}'.format(now.strftime('%B %Y')),
+                               "Logfile for {}".format(now.strftime('%B %Y')), logfile)
+gmail.send_message('me', message)
 
 db.close_db()
 logger.info("Done")
