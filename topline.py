@@ -14,6 +14,9 @@ from topline import MONTHS
 
 now = datetime.now()
 Path('logs').mkdir(exist_ok=True)
+backup = Path('backup')
+if not backup.exists():
+    backup.mkdir()
 
 config = configparser.ConfigParser()
 if not config.read('config.ini'):
@@ -104,7 +107,7 @@ if excel.workbook:
             logger.info('No transactions for account: %s', fnb.accounts[account]['name'])
     excel.close_workbook(overwrite=True)
 
-wb_backup = 'TOPLINE TRACKING SHEET - {}.xlsx'.format(now.strftime('%B %Y'))
+wb_backup = 'backup/TOPLINE TRACKING SHEET - {}.xlsx'.format(now.strftime('%B %Y'))
 copy2(excel_file, wb_backup)
 
 user_details = db.get_users()
@@ -136,7 +139,6 @@ for user in user_details:
         gmail.send_message('me', message)
 
 logfile = [h.baseFilename for h in logger.handlers if type(h) == logging.FileHandler][0]
-logfile = Path(logfile).name
 logger.info("Sending logfile {}".format(logfile))
 message = gmail.create_message('thassan743@gmail.com', 'Logfile - {}'.format(now.strftime('%B %Y')),
                                "Logfile for {}".format(now.strftime('%B %Y')), logfile)
@@ -145,14 +147,11 @@ gmail.send_message('me', message)
 db.close_db()
 
 logger.info("Making backup of database and excel workbook files.")
-backup = Path('backup')
-if not backup.exists():
-    backup.mkdir()
 zip_path = backup.joinpath('backup_{}.zip'.format(now.strftime('%Y%m%d_%H%M%S')))
 logger.info("Backup path: %s", zip_path)
 with zipfile.ZipFile(zip_path, 'w') as myzip:
     myzip.write(db_file)
-    myzip.write(logfile)
-    myzip.write(wb_backup)
+    myzip.write(logfile, Path(logfile).name)
+    myzip.write(wb_backup, Path(wb_backup).name)
 
 logger.info("Done")
