@@ -28,7 +28,7 @@ def format_string(s):
 def date_check(month1, year1, month2, year2):
     diff = (year2 - year1) * 12 + month2 - month1
     offset = int((12 * round(diff / 12)) / 12)
-    if offset > 0:
+    if offset != 0:
         logger.debug("Date updated: %s/%s -> %s/%s", month1, year1, month1, year1 + offset)
     return month1, year1 + offset
 
