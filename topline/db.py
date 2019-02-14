@@ -41,7 +41,8 @@ class DB:
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS accounts(
                                             acc_num INTEGER PRIMARY KEY,
                                             name TEXT NOT NULL,
-                                            balance REAL)
+                                            balance REAL
+                                            active INTEGER NOT NULL)
                             ''')
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS transactions(
                                             id INTEGER PRIMARY KEY,
@@ -173,18 +174,18 @@ class DB:
 
     def get_accounts(self):
         logger.debug("Fetching accounts from database")
-        result = self.cursor.execute("SELECT acc_num, name FROM accounts")
+        result = self.cursor.execute("SELECT acc_num, name, active FROM accounts")
         accounts = result.fetchall()
         logger.info("Fetched %s accounts from database", len(accounts))
         return accounts
 
-    def add_account(self, acc_num, name, balance):
+    def add_account(self, acc_num, name, balance, active=True):
         logger.info("Adding account to database: %s - %s, balance = R %.2f", acc_num, name, float(balance))
-        self.cursor.execute("INSERT INTO accounts (acc_num, name, balance) VALUES (?,?,?)",
-                            (acc_num, name, balance))
+        self.cursor.execute("INSERT INTO accounts (acc_num, name, balance, active) VALUES (?,?,?,?)",
+                            (acc_num, name, balance, active))
         self.connection.commit()
 
-    def update_account(self, acc_num, name, balance):
+    def update_account(self, acc_num, name, balance, active=True):
         result = self.cursor.execute("SELECT balance FROM accounts WHERE acc_num = ?", (acc_num,))
         current_balance = result.fetchone()[0]
         if current_balance is None:
@@ -198,11 +199,11 @@ class DB:
         else:
             logger.debug("Account %s - %s up to date", acc_num, name)
 
-    def remove_account(self, acc_num):
+    def set_account_inactive(self, acc_num):
         result = self.cursor.execute("SELECT * FROM accounts WHERE acc_num = ?", (acc_num,))
         account = result.fetchone()
-        logger.info("Removing account from database: %s - %s, balance = %.2f", account[0], account[1], account[2])
-        self.cursor.execute("DELETE FROM accounts WHERE acc_num = ?", (acc_num,))
+        logger.info("Setting account status to inactive: %s - %s, balance = %.2f", account[0], account[1], account[2])
+        self.cursor.execute("UPDATE accounts SET active = ? WHERE acc_num = ?", (False,))
         self.connection.commit()
 
     def add_transaction(self, acc_num, date, description, reference, amount, user_id, month=None, year=None):

@@ -70,8 +70,8 @@ for acc in list(set(cur_accounts).union(db_account_numbers)):
         db.update_account(acc, fnb.accounts[acc]['name'], float(fnb.accounts[acc]['balance']))
     elif acc in cur_accounts:
         db.add_account(acc, fnb.accounts[acc]['name'], float(fnb.accounts[acc]['balance']))
-    elif acc in db_account_numbers:
-        db.remove_account(acc)
+    elif acc in db_account_numbers and db_accounts[db_account_numbers.index(acc)][2]:
+        db.set_account_inactive(acc)
 
 Transaction.usernames = db_usernames
 Transaction.accounts = db.get_accounts()
