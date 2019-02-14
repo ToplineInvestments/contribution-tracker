@@ -18,6 +18,8 @@ user_row = 33
 roi_row = 71
 income_row = 75
 expense_row = 77
+account_row = 25
+last_account_row = 35
 
 
 def is_number(s):
@@ -83,6 +85,12 @@ class Excel:
         if not Excel.user_ids:
             Excel.user_ids = self.get_user_ids()
 
+        # Force account balances to 0
+        logger.info("Clearing all account balances")
+        account_range = self.summary_sheet['A' + str(account_row):'C' + str(last_account_row)]
+        for r in account_range:
+            r[2].value = 0
+
     def add_transaction(self, transaction):
         # determine which sheet to use for current transaction
         sheet = self.get_target_sheet(transaction.month_id, transaction.year % 2000)
@@ -120,15 +128,18 @@ class Excel:
         return self.write_to_sheet(sheet, row, column, abs(transaction.amount), add=True)
 
     def update_account_balances(self, account, balance):
-        account_row = 25
         sheet = self.summary_sheet
-        cell = [c[0] for c in sheet['A{}:A{}'.format(account_row, sheet.max_row)] if c[0].value == account]
+        account_range = sheet['A' + str(account_row):'C' + str(last_account_row)]
+        cell = [r[0] for r in account_range if r[0].value == account]
         if len(cell) == 1:
             old_balance = sheet.cell(row=cell[0].row, column=3).value
             logger.info("Updating account %s balance: R %.2f -> R %.2f", account, old_balance, balance)
             sheet.cell(row=cell[0].row, column=3).value = balance
         else:
-            logger.warning("Unable to update account balance. Account row not found: %s", account)
+            logger.info("Adding account %s balance: R %.2f", account, balance)
+            row = [r for r in account_range if r[0].value is None][0]
+            row[0].value = account
+            row[2].value = balance
 
     def get_sheets(self):
         self.sheet_names = self.workbook.sheetnames
