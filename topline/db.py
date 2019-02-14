@@ -185,7 +185,7 @@ class DB:
                             (acc_num, name, balance, active))
         self.connection.commit()
 
-    def update_account(self, acc_num, name, balance, active=True):
+    def update_account(self, acc_num, name, balance):
         result = self.cursor.execute("SELECT balance FROM accounts WHERE acc_num = ?", (acc_num,))
         current_balance = result.fetchone()[0]
         if current_balance is None:
@@ -203,7 +203,7 @@ class DB:
         result = self.cursor.execute("SELECT * FROM accounts WHERE acc_num = ?", (acc_num,))
         account = result.fetchone()
         logger.info("Setting account status to inactive: %s - %s, balance = %.2f", account[0], account[1], account[2])
-        self.cursor.execute("UPDATE accounts SET active = ? WHERE acc_num = ?", (False,))
+        self.cursor.execute("UPDATE accounts SET balance = ?, active = ? WHERE acc_num = ?", (0, False,))
         self.connection.commit()
 
     def add_transaction(self, acc_num, date, description, reference, amount, user_id, month=None, year=None):
