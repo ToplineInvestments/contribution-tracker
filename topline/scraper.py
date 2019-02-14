@@ -92,24 +92,28 @@ class FNB(Scraper):
 
         try:
             WebDriverWait(self.driver, 30).until(
-                EC.presence_of_element_located((By.XPATH, "// *[ @ id = 'newsLanding'] / div[1]")))
+                EC.presence_of_element_located((By.XPATH, "//*[@id='newsLanding']/div[3]/ul/li[1]/div")))
         except TimeoutException:
             logger.debug("Timeout")
             return False
         return True
 
     def logout(self):
-        logout_button = self.driver.find_element_by_xpath("//*[@id='headerButton_1']")
+        logout_button = self.driver.find_element_by_xpath("//*[@id='headerButton_']")
         logout_button.click()
         self.driver.quit()
         self.driver = None
         return True
 
     def load_account_page(self):
-        # Make sure we're on the 'My Bank Accounts' tab
-        header = self.driver.find_element_by_xpath('//*[@id="topTabs"]')
-        tabs = header.find_elements_by_xpath('//*[contains(@class,"mainTab")]')
-        if not (self.click_tab(tabs, 'accounts')):
+        burger_button = self.driver.find_element_by_xpath('//*[@id="menuBtn"]')
+        burger_button.click()
+        menu = self.driver.find_element_by_xpath('//*[@id="menu"]')
+        menu_buttons = menu.find_elements_by_xpath('//*[@class="iconButton"]')
+        if not (self.click_tab(menu_buttons, 'accounts')):
+            return False
+        header = self.driver.find_element_by_xpath('//*[@id="extendedPageHeader"]')
+        if header.text != 'My Bank Accounts':
             return False
         return True
 
@@ -194,7 +198,7 @@ class FNB(Scraper):
     def click_tab(self, tabs, tab_name):
         tab_names = [tab.text for tab in tabs]
         idx = [i for i, name in enumerate(tab_names) if tab_name.lower() in name.lower()]
-        if len(idx) == 1:
+        if len(idx) > 0:
             tabs[idx[0]].click()
             self.wait_for_loader()
             return True
