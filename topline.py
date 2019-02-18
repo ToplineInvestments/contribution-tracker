@@ -95,10 +95,10 @@ if excel.workbook:
                 t = Transaction(trans, account)
                 if db.check_transaction(t.account, t.date, t.description, t.reference, t.amount):
                     continue
-                contrib = t.process_transaction()
+                t.process_transaction()
                 t.transaction_id = db.add_transaction(t.account, t.date, t.description, t.reference, t.amount,
                                                       t.user_id, t.month, t.year)
-                if contrib and t.transaction_id:
+                if t.transaction_id:
                     db.update_user(t.user_id, t.username, t.date, t.amount, t.transaction_id)
                     db_count += 1
                     if excel.add_transaction(t):
