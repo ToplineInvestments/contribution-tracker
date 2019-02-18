@@ -58,19 +58,19 @@ class Transaction:
             if self.username is not None:
                 self.type = 'contribution'
             else:
-                if 'MONTHLY ACCOUNT FEE' in self.description.upper():
+                if 'MONTHLY ACCOUNT FEE' in self.description.upper() or self.amount < 0:
                     self.type = 'expense'
                 else:
-                    self.type = 'unknown'
+                    self.type = 'income'
         elif 'savings' in account_name.lower() or 'deposit' in account_name.lower():
             if 'profit share' in self.description.lower():
                 self.type = 'roi'
             else:
                 self.type = 'unknown'
 
-        if self.type == 'expense' or self.type == 'roi':
-            self.username = "TIG"
-            self.user_id = [u[0] for u in Transaction.usernames if u[1] == "TIG"][0]
+        # if self.type == 'expense' or self.type == 'roi':
+        #     self.username = "TIG"
+        #     self.user_id = [u[0] for u in Transaction.usernames if u[1] == "TIG"][0]
         return self.type
 
     def process_transaction(self):
@@ -113,8 +113,11 @@ class Transaction:
         # internal user list to retain spreadsheet order
         uid = [ui for ui, u in enumerate(Transaction.usernames) for ri, r in enumerate(ref) if r in u[1:]]
         if len(uid) is not 1:
-            logger.debug("Error finding user in reference: %s", self.reference)
-            return False
-        self.user_id = Transaction.usernames[uid[0]][0]
-        self.username = Transaction.usernames[uid[0]][1]
+            # logger.debug("Error finding user in reference: %s", self.reference)
+            # return False
+            self.username = "TIG"
+            self.user_id = [u[0] for u in Transaction.usernames if u[1] == "TIG"][0]
+        else:
+            self.user_id = Transaction.usernames[uid[0]][0]
+            self.username = Transaction.usernames[uid[0]][1]
         return True
