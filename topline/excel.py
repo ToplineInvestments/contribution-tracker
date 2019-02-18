@@ -129,17 +129,15 @@ class Excel:
 
     def update_account_balances(self, account, balance):
         sheet = self.summary_sheet
-        account_range = sheet['A' + str(account_row):'C' + str(last_account_row)]
-        cell = [r[0] for r in account_range if r[0].value == account]
-        if len(cell) == 1:
-            old_balance = sheet.cell(row=cell[0].row, column=3).value
-            logger.info("Updating account %s balance: R %.2f -> R %.2f", account, old_balance, balance)
-            sheet.cell(row=cell[0].row, column=3).value = balance
+        cell = self.find_in_column(account, sheet, col=1, start_row=account_row, end_row=last_account_row)
+        if cell:
+            logger.info("Updating account %s balance: R %.2f", account, balance)
+            sheet.cell(row=cell.row, column=3).value = balance
         else:
             logger.info("Adding account %s balance: R %.2f", account, balance)
-            row = [r for r in account_range if r[0].value is None][0]
-            row[0].value = account
-            row[2].value = balance
+            new_cell = self.find_in_column(None, sheet, col=1, start_row=account_row, end_row=last_account_row)
+            new_cell.value = account
+            sheet.cell(row=new_cell.row, column=3).value = balance
 
     def get_sheets(self):
         self.sheet_names = self.workbook.sheetnames
@@ -211,3 +209,13 @@ class Excel:
             logger.info("Saving workbook to file: %s", new_filename)
             self.workbook.save(new_filename)
         self.workbook.close()
+
+    @staticmethod
+    def find_in_column(value, sheet, col, start_row, end_row):
+        if type(col) is int:
+            col = openpyxl.utils.get_column_letter(col)
+        cell_range = sheet[col + str(start_row):col + str(end_row)]
+        cell = [c[0] for c in cell_range if str(value) in str(c[0].value)]
+        if not cell:
+            return None
+        return cell[0]
