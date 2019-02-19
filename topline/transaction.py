@@ -55,7 +55,7 @@ class Transaction:
     def transaction_type(self):
         account_name = [acc[1] for acc in Transaction.accounts if acc[0] == self.account][0]
         if 'cheque' in account_name.lower():
-            if self.username is not None:
+            if self.username is not None and self.username != 'TIG':
                 self.type = 'contribution'
             else:
                 if 'MONTHLY ACCOUNT FEE' in self.description.upper() or self.amount < 0:
@@ -80,9 +80,8 @@ class Transaction:
 
         if self.type == 'unknown':
             logger.info("Unknown transaction")
-            return False
-
-        if self.type == 'contribution':
+            self.year = self.date.year % 2000
+        elif self.type == 'contribution':
             # find month in transaction reference
             month_ids = [mi for mi, m in MONTHS.items() for ri, r in enumerate(ref) if r in m]
             self.month_id = month_ids[0] if len(month_ids) == 1 else None
@@ -104,10 +103,6 @@ class Transaction:
         return True
 
     def get_user(self, ref):
-        if len(ref) < 3:
-            logger.debug("Reference Error - Too few parameters: %s", ref)
-            return False
-
         # determine user
         # usernames retrieved from database to account for alternatives. If match is found, index is determined from
         # internal user list to retain spreadsheet order
