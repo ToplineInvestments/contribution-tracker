@@ -101,8 +101,9 @@ if excel.workbook:
                 if t.transaction_id:
                     db.update_user(t.user_id, t.username, t.date, t.amount, t.transaction_id)
                     db_count += 1
-                    if excel.add_transaction(t):
-                        excel_count += 1
+                    if t.type != 'unknown':
+                        if excel.add_transaction(t):
+                            excel_count += 1
             logger.info("Processed %s transactions in account: %s. %s added to database, %s written to excel",
                         transaction_count, fnb.accounts[account]['name'], db_count, excel_count)
             excel.update_account_balances(account, float(fnb.accounts[account]['balance']))
