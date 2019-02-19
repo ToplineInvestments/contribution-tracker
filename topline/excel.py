@@ -15,9 +15,12 @@ logger = logging.getLogger(__name__)
 
 header_row = 32
 user_row = 33
-roi_row = 71
-income_row = 75
-expense_row = 77
+roi_row = 72
+last_roi_row = 76
+income_row = 78
+last_income_row = 79
+expense_row = 81
+last_expense_row = 86
 account_row = 25
 last_account_row = 35
 
@@ -111,18 +114,21 @@ class Excel:
         if transaction.type == 'contribution':
             user_offset = [ui for ui, u in enumerate(Excel.user_ids) if u[1] == transaction.username]
             row = user_row + user_offset[0]
-        elif transaction.type == 'expense':
-            row = expense_row
         elif transaction.type == 'roi':
-            roi_range = sheet['A' + str(roi_row):'A' + str(income_row - 1)]
-            row = 0
-            for r in roi_range:
-                if str(transaction.account) in r[0].value:
-                    row = r[0].row
-                    break
-            if not row:
-                logger.warning('Unable to find row for ROI transaction')
-                return False
+            cell = self.find_in_column(transaction.account, sheet, 1, roi_row, last_roi_row)
+            if not cell:
+                cell = self.find_in_column(None, sheet, 1, roi_row, last_roi_row)
+                cell.value = transaction.account
+            row = cell.row
+        elif transaction.type == 'income':
+            cell = self.find_in_column(None, sheet, column, income_row, last_income_row)
+            row = cell.row
+        elif transaction.type == 'expense':
+            if 'MONTHLY ACCOUNT FEE' in transaction.description.upper():
+                row = expense_row
+            else:
+                cell = self.find_in_column(None, sheet, column, expense_row + 1, last_expense_row)
+                row = cell.row
         else:
             return False
         return self.write_to_sheet(sheet, row, column, abs(transaction.amount), add=True)
