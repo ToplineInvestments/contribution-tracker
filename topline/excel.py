@@ -1,5 +1,6 @@
 import openpyxl
 import openpyxl.utils
+import openpyxl.comments
 import re
 from pathlib import Path
 import logging
@@ -191,16 +192,17 @@ class Excel:
             return False
 
         cell_val = target_cell.value
-        cell_comment = '\n'.join(filter(None, (comment, target_cell.comment)))
         if cell_val == 0 or cell_val == '-' or cell_val is None or overwrite:
             target_cell.value = value
-            target_cell.comment = openpyxl.comments.Comment(cell_comment, 'Topline') if cell_comment else None
+            target_cell.comment = openpyxl.comments.Comment(comment, 'Topline') if comment else None
             logger.info("Transaction written to sheet [%s] %s%s.",
                         sheet.title, openpyxl.utils.get_column_letter(col), row)
         elif add:
             logger.info("[%s] %s%s contains data! Adding to existing value!",
                         sheet.title, openpyxl.utils.get_column_letter(col), row)
             target_cell.value = cell_val + value
+            cell_comment = '\n'.join(filter(None, (comment, target_cell.comment.text)))
+            target_cell.comment = openpyxl.comments.Comment(cell_comment, 'Topline') if cell_comment else None
         else:
             logger.warning("[%s] %s%s contains data! Transaction not written to sheet!",
                            sheet.title, openpyxl.utils.get_column_letter(col), row)
@@ -229,7 +231,7 @@ class Excel:
             return None
         return cell[0]
     
-    def set_updating_member(username, month, year)
+    def set_updating_member(self, username, month, year):
         sheet = self.get_target_sheet(month, year % 2000)
         header = self.get_column_headers(sheet)
         # find correct column for current month
@@ -237,9 +239,9 @@ class Excel:
             column = header.index([month, year % 2000]) + 1
         except ValueError:
             logger.warning("Error finding correct column: Month %s, Year %s",
-                           transaction.month_id, transaction.year % 2000)
+                           month, year % 2000)
             return False
         logger.info("Tracking completed by '%s'. Updating sheet [%s] %s%s.",
-                    username, sheet.title, openpyxl.utils.get_column_letter(column), row)
+                    username, sheet.title, openpyxl.utils.get_column_letter(column), member_row)
         sheet.cell(row=member_row, column=column).value = username
         return True
