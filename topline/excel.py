@@ -13,16 +13,16 @@ from openpyxl.worksheet.merge import MergeCells
 
 logger = logging.getLogger(__name__)
 
-header_row = 32
-user_row = 33
-roi_row = 72
-last_roi_row = 76
-income_row = 78
-last_income_row = 79
-expense_row = 81
-last_expense_row = 86
-account_row = 25
-last_account_row = 35
+header_row = 29
+user_row = 30
+roi_row = 63
+last_roi_row = 67
+income_row = 69
+last_income_row = 70
+expense_row = 72
+last_expense_row = 77
+account_row = 22
+last_account_row = 32
 
 
 def is_number(s):
