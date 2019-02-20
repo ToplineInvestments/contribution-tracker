@@ -13,6 +13,7 @@ from openpyxl.worksheet.merge import MergeCells
 
 logger = logging.getLogger(__name__)
 
+member_row = 24
 header_row = 29
 user_row = 30
 roi_row = 63
@@ -225,3 +226,18 @@ class Excel:
         if not cell:
             return None
         return cell[0]
+    
+    def set_updating_member(username, month, year)
+        sheet = self.get_target_sheet(month, year % 2000)
+        header = self.get_column_headers(sheet)
+        # find correct column for current month
+        try:
+            column = header.index([month, year % 2000]) + 1
+        except ValueError:
+            logger.warning("Error finding correct column: Month %s, Year %s",
+                           transaction.month_id, transaction.year % 2000)
+            return False
+        logger.info("Tracking completed by '%s'. Updating sheet [%s] %s%s.",
+                    username, sheet.title, openpyxl.utils.get_column_letter(column), row)
+        sheet.cell(row=member_row, column=column).value = username
+        return True

@@ -109,6 +109,7 @@ if excel.workbook:
             excel.update_account_balances(account, float(fnb.accounts[account]['balance']))
         else:
             logger.info('No transactions for account: %s', fnb.accounts[account]['name'])
+    excel.set_updating_member('Topline', now.month, now.year)
     excel.close_workbook(overwrite=True)
 
 wb_backup = 'backup/TOPLINE TRACKING SHEET - {}.xlsx'.format(now.strftime('%B %Y'))
