@@ -184,21 +184,23 @@ class Excel:
             return None
         return self.workbook[self.sheet_names[sheet_id[0]]]
 
-    def write_to_sheet(self, sheet, row, col, value, overwrite=False, add=False):
+    def write_to_sheet(self, sheet, row, col, value, overwrite=False, add=False, comment=None):
         target_cell = sheet.cell(row=row, column=col)
         if target_cell.protection.locked:
             logger.warning("[%s] %s%s is locked!", sheet.title, openpyxl.utils.get_column_letter(col), row)
             return False
 
         cell_val = target_cell.value
+        cell_comment = '\n'.join(filter(None, (comment, target_cell.comment)))
         if cell_val == 0 or cell_val == '-' or cell_val is None or overwrite:
-            sheet.cell(row=row, column=col, value=value)
+            target_cell.value = value
+            target_cell.comment = openpyxl.comments.Comment(cell_comment, 'Topline') if cell_comment else None
             logger.info("Transaction written to sheet [%s] %s%s.",
                         sheet.title, openpyxl.utils.get_column_letter(col), row)
         elif add:
             logger.info("[%s] %s%s contains data! Adding to existing value!",
                         sheet.title, openpyxl.utils.get_column_letter(col), row)
-            sheet.cell(row=row, column=col, value=cell_val + value)
+            target_cell.value = cell_val + value
         else:
             logger.warning("[%s] %s%s contains data! Transaction not written to sheet!",
                            sheet.title, openpyxl.utils.get_column_letter(col), row)
