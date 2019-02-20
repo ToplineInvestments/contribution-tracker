@@ -113,6 +113,7 @@ class Excel:
                            transaction.month_id, transaction.year % 2000)
             return False
 
+        comment = None
         if transaction.type == 'contribution':
             user_offset = [ui for ui, u in enumerate(Excel.user_ids) if u[1] == transaction.username]
             row = user_row + user_offset[0]
@@ -125,15 +126,17 @@ class Excel:
         elif transaction.type == 'income':
             cell = self.find_in_column(None, sheet, column, income_row, last_income_row)
             row = cell.row
+            comment = transaction.description + ' - ' + transaction.reference
         elif transaction.type == 'expense':
             if 'MONTHLY ACCOUNT FEE' in transaction.description.upper():
                 row = expense_row
             else:
                 cell = self.find_in_column(None, sheet, column, expense_row + 1, last_expense_row)
                 row = cell.row
+                comment = transaction.description + ' - ' + transaction.reference
         else:
             return False
-        return self.write_to_sheet(sheet, row, column, abs(transaction.amount), add=True)
+        return self.write_to_sheet(sheet, row, column, abs(transaction.amount), add=True, comment=comment)
 
     def update_account_balances(self, account, balance):
         sheet = self.summary_sheet
@@ -202,6 +205,7 @@ class Excel:
                         sheet.title, openpyxl.utils.get_column_letter(col), row)
             target_cell.value = cell_val + value
             cell_comment = '\n'.join(filter(None, (comment, target_cell.comment.text)))
+            cell_comment = cell_comment or (str(cell_val) + ' + ' + str(value))
             target_cell.comment = openpyxl.comments.Comment(cell_comment, 'Topline') if cell_comment else None
         else:
             logger.warning("[%s] %s%s contains data! Transaction not written to sheet!",
