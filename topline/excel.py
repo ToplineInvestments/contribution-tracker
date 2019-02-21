@@ -14,6 +14,7 @@ from openpyxl.worksheet.merge import MergeCells
 
 logger = logging.getLogger(__name__)
 
+# define excel sheet row references. Updated to excel sheet v7
 member_row = 24
 header_row = 29
 user_row = 30
@@ -28,6 +29,7 @@ last_account_row = 32
 
 
 def is_number(s):
+    # helper function to test if a value is or can be converted to a number
     try:
         float(s)
         return True
@@ -72,6 +74,15 @@ patch_worksheet()
 
 
 class Excel:
+    """Class to interface with an Excel workbook
+    
+    Uses the openpyxl package to read from and write to Excel workbooks.
+    
+    Attributes:
+        filename: The name of the excel file
+    
+    """
+    
     user_ids = None
 
     def __init__(self, filename):
@@ -97,6 +108,20 @@ class Excel:
             r[2].value = 0
 
     def add_transaction(self, transaction):
+        """Processes a transaction and writes it to the excel workbook.
+        
+        Determines the correct sheet, row and column in the workbook that the 
+        transaction belongs to and then attempts to write the transaction to 
+        the cell depending on the transaction type.
+        
+        Args:
+            transaction: An instance of topline.transaction.Transaction class
+        
+        Returns:
+            True if the transaction is successfully written to the sheet.
+            False otherwise.
+        """
+                
         # determine which sheet to use for current transaction
         sheet = self.get_target_sheet(transaction.month_id, transaction.year % 2000)
         if not sheet:
@@ -114,6 +139,8 @@ class Excel:
             return False
 
         comment = None
+        
+        # Find correct row in worksheet based on transaction type
         if transaction.type == 'contribution':
             user_offset = [ui for ui, u in enumerate(Excel.user_ids) if u[1] == transaction.username]
             row = user_row + user_offset[0]
@@ -139,6 +166,7 @@ class Excel:
         return self.write_to_sheet(sheet, row, column, abs(transaction.amount), add=True, comment=comment)
 
     def update_account_balances(self, account, balance):
+        """Finds account number on the summary sheet and updates its balance"""
         sheet = self.summary_sheet
         cell = self.find_in_column(account, sheet, col=1, start_row=account_row, end_row=last_account_row)
         if cell:
@@ -151,6 +179,7 @@ class Excel:
             sheet.cell(row=new_cell.row, column=3).value = balance
 
     def get_sheets(self):
+        """Creates a list of sheet names and a list of month and year indeces"""
         self.sheet_names = self.workbook.sheetnames
         for sheet in self.sheet_names:
             if 'summary' in sheet.lower():
@@ -158,11 +187,15 @@ class Excel:
             else:
                 # format sheet name
                 s = format_string(sheet)
+                
+                # Iterate through the elements of the sheet name to determine
+                # the month and year range that the sheet is for
                 name = [i if type(i) is int else (next((j for j, x in MONTHS.items() if i in x), None)) for i in s]
                 self.sheet_list.append(name)
         self.sheet_names.remove(self.summary_sheet.title)
 
     def get_user_ids(self):
+        """Returns a list of usernames from the summary sheet."""
         row = 5
         user_ids = []
         while row < self.summary_sheet.max_row:
@@ -175,13 +208,13 @@ class Excel:
         return user_ids
 
     def get_column_headers(self, sheet):
-        # Format transaction header
+        """Returns a list of month and year references from column headers."""
         header = sheet[header_row]
         header = [[h.value.month, h.value.year % 2000] if h.is_date else str(h.value) for h in header]
         return header
 
     def get_target_sheet(self, month, year):
-        # determine which sheet to use for current transaction
+        """Return the sheet to use based on the transaction month and year."""
         sheet_id = [i for i, s in enumerate(self.sheet_list) if
                     (month >= s[0] and year == s[1]) or (month <= s[2] and year == s[3])]
         if not sheet_id:
@@ -189,6 +222,29 @@ class Excel:
         return self.workbook[self.sheet_names[sheet_id[0]]]
 
     def write_to_sheet(self, sheet, row, col, value, overwrite=False, add=False, comment=None):
+        """Writes a value to a cell in a worksheet.
+        
+        Writes the given value to the cell defined by the row and column
+        position in the given sheet, if the cell is not locked. If overwrite
+        is True, any value and comment in the cell is overwritten. If add is 
+        True, the value and comment are added to the existing value and comment.
+        
+        Args:
+            sheet: a Worksheet instance containing the cell to write to.
+            row: the row reference of the cell.
+            col: the column reference of the cell.
+            value: The value to write.
+            overwrite: Optional, Set to True to overwrite existing value and 
+                comment in the target cell.
+            add: Optional, Set to True to add to the existing value and comment
+                in the target cell.
+            comment: Optional. The comment to add to the cell.
+        
+        Returns:
+            True if the value and comment were successfully written.
+            False otherwise.
+        """
+        
         target_cell = sheet.cell(row=row, column=col)
         if target_cell.protection.locked:
             logger.warning("[%s] %s%s is locked!", sheet.title, openpyxl.utils.get_column_letter(col), row)
@@ -204,6 +260,9 @@ class Excel:
             logger.info("[%s] %s%s contains data! Adding to existing value!",
                         sheet.title, openpyxl.utils.get_column_letter(col), row)
             target_cell.value = cell_val + value
+            
+            # Check if there is an existing comment and concatenate it with the
+            # new comment.
             cell_comment = '\n'.join(filter(None, (comment, target_cell.comment.text)))
             cell_comment = cell_comment or (str(cell_val) + ' + ' + str(value))
             target_cell.comment = openpyxl.comments.Comment(cell_comment, 'Topline') if cell_comment else None
@@ -214,6 +273,7 @@ class Excel:
         return True
 
     def close_workbook(self, overwrite=True, filename=None):
+        """Save and close the workbook"""
         new_filename = self.filename
         if filename:
             new_filename = filename
@@ -227,6 +287,7 @@ class Excel:
 
     @staticmethod
     def find_in_column(value, sheet, col, start_row, end_row):
+        """Search a column for a value and return the cell if found."""
         if type(col) is int:
             col = openpyxl.utils.get_column_letter(col)
         cell_range = sheet[col + str(start_row):col + str(end_row)]
@@ -236,6 +297,7 @@ class Excel:
         return cell[0]
     
     def set_updating_member(self, username, month, year):
+        """Write the member name doing the update to the correct cell"""
         sheet = self.get_target_sheet(month, year % 2000)
         header = self.get_column_headers(sheet)
         # find correct column for current month
