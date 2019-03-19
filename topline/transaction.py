@@ -60,8 +60,10 @@ class Transaction:
             else:
                 if 'MONTHLY ACCOUNT FEE' in self.description.upper() or self.amount < 0:
                     self.type = 'expense'
-                else:
+                elif self.amount > 0:
                     self.type = 'income'
+                else:
+                    self.type = 'unknown'
         elif 'savings' in account_name.lower() or 'deposit' in account_name.lower():
             if 'profit share' in self.description.lower():
                 self.type = 'roi'
