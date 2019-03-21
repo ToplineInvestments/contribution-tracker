@@ -250,10 +250,11 @@ class Excel:
             logger.warning("[%s] %s%s is locked!", sheet.title, openpyxl.utils.get_column_letter(col), row)
             return False
 
+        new_comment = 'R' + str(value) + ': ' + comment
         cell_val = target_cell.value
         if cell_val == 0 or cell_val == '-' or cell_val is None or overwrite:
             target_cell.value = value
-            target_cell.comment = openpyxl.comments.Comment(comment, 'Topline') if comment else None
+            target_cell.comment = openpyxl.comments.Comment(new_comment, 'Topline') if comment else None
             logger.info("Transaction written to sheet [%s] %s%s.",
                         sheet.title, openpyxl.utils.get_column_letter(col), row)
         elif add:
@@ -263,8 +264,9 @@ class Excel:
             
             # Check if there is an existing comment and concatenate it with the
             # new comment.
-            cell_comment = '\n'.join(filter(None, (comment, target_cell.comment.text)))
-            cell_comment = cell_comment or (str(cell_val) + ' + ' + str(value))
+            old_comment = target_cell.comment.text if target_cell.comment.text else 'R' + str(target_cell.value)
+            cell_comment = '\n + '.join(filter(None, (old_comment, new_comment)))
+            # cell_comment = cell_comment or (str(cell_val) + ' + ' + str(value))
             target_cell.comment = openpyxl.comments.Comment(cell_comment, 'Topline') if cell_comment else None
         else:
             logger.warning("[%s] %s%s contains data! Transaction not written to sheet!",
