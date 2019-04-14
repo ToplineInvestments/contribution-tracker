@@ -250,7 +250,7 @@ class Excel:
             logger.warning("[%s] %s%s is locked!", sheet.title, openpyxl.utils.get_column_letter(col), row)
             return False
 
-        new_comment = 'R' + str(value) + ': ' + comment
+        new_comment = 'R' + str(value) + ': ' + str(comment)
         cell_val = target_cell.value
         if cell_val == 0 or cell_val == '-' or cell_val is None or overwrite:
             target_cell.value = value
